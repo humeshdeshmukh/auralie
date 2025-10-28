@@ -2,6 +2,9 @@
 
 import { useState } from 'react';
 import { PlusIcon, XMarkIcon } from '@heroicons/react/24/outline';
+import { collection, addDoc, serverTimestamp } from 'firebase/firestore';
+import { db } from '@/lib/firebase';
+import { useAuth } from '@/contexts/AuthContext';
 
 type FlowType = 'light' | 'medium' | 'heavy' | 'spotting' | 'none';
 type MoodType = 'happy' | 'sad' | 'stressed' | 'anxious' | 'tired' | 'energetic' | 'normal';
@@ -11,6 +14,7 @@ interface QuickLogProps {
 }
 
 const QuickLog: React.FC<QuickLogProps> = ({ onLogAdded }) => {
+  const { user } = useAuth();
   const [showForm, setShowForm] = useState(false);
   const [date, setDate] = useState(() => {
     const now = new Date();
@@ -44,10 +48,30 @@ const QuickLog: React.FC<QuickLogProps> = ({ onLogAdded }) => {
     setError(null);
     
     try {
-      console.log('Logging entry:', { date, flow, mood, symptoms, notes });
+      if (!user) {
+        throw new Error('You must be logged in to save entries');
+      }
+
+      // Create entry data
+      const entryData = {
+        date: new Date(date),
+        flow,
+        mood,
+        symptoms,
+        notes: notes || null,
+        createdAt: serverTimestamp(),
+        updatedAt: serverTimestamp()
+      };
+
+      console.log('Saving entry:', entryData);
       
-      // Simulate API call
-      await new Promise(resolve => setTimeout(resolve, 1000));
+      // Add document to Firestore
+      const docRef = await addDoc(
+        collection(db, 'users', user.uid, 'entries'),
+        entryData
+      );
+      
+      console.log('Entry saved with ID: ', docRef.id);
       
       // Reset form
       setFlow('none');
@@ -60,7 +84,7 @@ const QuickLog: React.FC<QuickLogProps> = ({ onLogAdded }) => {
       onLogAdded();
     } catch (err) {
       console.error('Error saving log:', err);
-      setError('Failed to save entry. Please try again.');
+      setError(err instanceof Error ? err.message : 'Failed to save entry. Please try again.');
     } finally {
       setIsSubmitting(false);
     }
