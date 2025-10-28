@@ -7,7 +7,7 @@ export default function Header() {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
   const navItems = [
-    { name: 'About', href: '#about', icon: null },
+    
     {
       name: 'Cycles',
       href: '#cycles',
@@ -27,7 +27,8 @@ export default function Header() {
       dropdown: ['Fertility Window', 'Ovulation', 'Conception']
     },
     { name: 'Knowledge', href: '#knowledge', icon: null },
-    { name: 'Community', href: '#community', icon: null }
+    { name: 'Community', href: '#community', icon: null },
+    { name: 'About', href: '#about', icon: null }
   ];
 
   return (

@@ -2,17 +2,15 @@ import Image from 'next/image';
 
 export default function Hero() {
   return (
-    <section className="relative min-h-screen flex items-center overflow-hidden" style={{ 
-      background: 'radial-gradient(ellipse at 70% 50%, #FFF8F6 0%, #F8F0ED 70%)' 
-    }}>
+    <section className="relative min-h-screen flex items-center overflow-hidden bg-gradient-to-b from-background-light to-background-light">
       {/* Decorative elements */}
       <div className="absolute inset-0 overflow-hidden">
-        <div className="absolute -top-1/4 -right-1/4 w-[600px] h-[600px] bg-primary/5 rounded-full mix-blend-multiply filter blur-3xl opacity-70"></div>
-        <div className="absolute -bottom-1/4 -left-1/4 w-[500px] h-[500px] bg-background-secondary/20 rounded-full mix-blend-multiply filter blur-3xl opacity-70"></div>
+        <div className="absolute -right-20 -top-20 w-96 h-96 bg-primary/5 rounded-full mix-blend-multiply filter blur-3xl opacity-50"></div>
+        <div className="absolute -left-20 -bottom-20 w-96 h-96 bg-background-secondary/20 rounded-full mix-blend-multiply filter blur-3xl opacity-30"></div>
       </div>
       
       {/* Content Container */}
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 w-full pt-8 md:pt-16 lg:pt-20 pb-16 md:pb-24 lg:pb-32 relative z-10">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 w-full pt-0 pb-0 relative z-10">
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 lg:gap-16 items-center">
           {/* Left Content */}
           <div className="text-center lg:text-left space-y-6 relative z-10">
@@ -103,7 +101,7 @@ export default function Hero() {
       </div>
 
       {/* Bottom wave separator */}
-      <div className="absolute bottom-0 left-0 right-0 h-32 bg-white [clip-path:polygon(0_40%,100%_0,100%_100%,0%_100%)] -mb-1"></div>
+      {/* <div className="absolute bottom-0 left-0 right-0 h-32 bg-white [clip-path:polygon(0_40%,100%_0,100%_100%,0%_100%)] -mb-1"></div> */}
     </section>
   );
 }
