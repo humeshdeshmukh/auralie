@@ -23,6 +23,7 @@ from ..core.ml_utils import (
     calculate_cycle_metrics,
     predict_fertile_window
 )
+from .gemini_service import gemini_service
 
 logger = get_logger(__name__)
 
@@ -223,7 +224,7 @@ class CyclePredictor:
             logger.error(f"Error training model: {e}", exc_info=True)
             raise
     
-    def predict(
+    async def predict(
         self, 
         cycles: List[Dict[str, Any]]
     ) -> Dict[str, Any]:
@@ -242,21 +243,34 @@ class CyclePredictor:
             return self._get_fallback_prediction()
             
         try:
-            # Sort cycles by date
-            cycles = sorted(cycles, key=lambda x: x['start_date'])
+            # Try using Gemini AI first if available
+            if settings.GEMINI_API_KEY:
+                try:
+                    gemini_result = await gemini_service.predict_next_cycle(cycles)
+                    if gemini_result.get('status') == 'success':
+                        logger.info("Successfully got prediction from Gemini AI")
+                        return gemini_result
+                    else:
+                        logger.warning(f"Gemini prediction failed: {gemini_result.get('message')}")
+                except Exception as e:
+                    logger.error(f"Error calling Gemini service: {e}", exc_info=True)
+            
+            # Fall back to ML model if Gemini is not available or fails
+            cycles_sorted = sorted(cycles, key=lambda x: x['start_date'])
             
             # Use ML model if available and we have enough data
-            if self.model and self.scaler and len(cycles) >= 2:
+            if self.model and self.scaler and len(cycles_sorted) >= 2:
                 # Prepare features for prediction
-                X, _, _ = self.preprocess_data(cycles)
+                X, _, _ = self.preprocess_data(cycles_sorted)
                 X_scaled = self.scaler.transform(X[-1:])  # Use most recent data point
                 
                 # Predict next cycle length
                 next_cycle_length = max(21, min(45, self.model.predict(X_scaled)[0]))
-                last_cycle = cycles[-1]
+                last_cycle = cycles_sorted[-1]
                 next_period_date = last_cycle['start_date'] + timedelta(days=next_cycle_length)
                 
-                # Calculate fertile window
+                # Calculate fertile window (5 days before and 1 day after ovulation)
+                # Ovulation typically occurs ~14 days before next period
                 fertile_info = predict_fertile_window(
                     next_period_date=next_period_date,
                     cycle_length=next_cycle_length
@@ -272,7 +286,7 @@ class CyclePredictor:
                             'end': fertile_info['fertile_window_end'],
                             'ovulation_day': fertile_info['ovulation_day']
                         },
-                        'confidence': self._calculate_confidence(len(cycles)),
+                        'confidence': self._calculate_confidence(len(cycles_sorted)),
                         'model_used': 'ml_model',
                         'last_cycle_date': last_cycle['start_date'].isoformat()
                     },

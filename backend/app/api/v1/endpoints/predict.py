@@ -7,7 +7,7 @@ from pydantic import BaseModel, Field, validator
 from pydantic.types import conint
 
 from ....core.security import get_current_user
-from ....services.cycle_predictor import CyclePredictor
+from ....services.firebase_ai_service import firebase_ai
 from ....core.logging_config import get_logger
 
 router = APIRouter()
@@ -58,48 +58,48 @@ class TrainingResponse(BaseModel):
 async def predict_cycle(
     cycles: List[CycleData],
     current_user: dict = Depends(get_current_user)
-) -> Dict[str, Any]:
+):
     """
-    Predict the next menstrual cycle and fertile window based on historical data.
+    Predict the next menstrual cycle and fertile window using Firebase AI.
     
     - **cycles**: List of historical cycle data
     - Returns: Prediction including next period date and fertile window
     """
-    logger.info(f"Prediction request received for user {current_user['id']}")
-    
     try:
-        if not cycles:
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail="At least one cycle is required for prediction"
-            )
-        
-        # Convert Pydantic models to dicts
+        # Convert Pydantic models to dicts for processing
         cycle_dicts = [cycle.dict() for cycle in cycles]
         
-        # Get prediction
-        predictor = CyclePredictor()
-        result = predictor.predict(cycle_dicts)
-        
-        # Log successful prediction
-        logger.info(
-            f"Prediction successful for user {current_user['id']}. "
-            f"Next period: {result['prediction']['next_period_date']}"
+        # Make prediction using Firebase AI service
+        result = await firebase_ai.predict_next_cycle(
+            user_id=current_user['uid'],
+            cycles=cycle_dicts
         )
         
-        return result
+        # Log the prediction
+        logger.info(f"Prediction made for user {current_user['uid']} using {result['metadata']['model']}")
         
-    except ValueError as ve:
-        logger.warning(f"Validation error in prediction: {str(ve)}")
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail=str(ve)
-        )
+        return {
+            "status": "success",
+            "prediction": {
+                "next_period_date": result["prediction"].get("next_period_date"),
+                "fertile_window": result["prediction"].get("fertile_window", {}),
+                "confidence": result["prediction"].get("confidence", "medium"),
+                "model_used": result["metadata"].get("model", "fallback"),
+                "notes": result["prediction"].get("notes", "")
+            },
+            "metadata": {
+                "user_id": current_user['uid'],
+                "prediction_date": datetime.utcnow().isoformat(),
+                "cycles_used": len(cycles),
+                "model": result["metadata"].get("model", "fallback")
+            }
+        }
+        
     except Exception as e:
-        logger.error(f"Prediction error: {str(e)}", exc_info=True)
+        logger.error(f"Prediction failed: {e}", exc_info=True)
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="An error occurred while processing your prediction"
+            detail=f"Failed to make prediction: {str(e)}"
         )
 
 @router.post(
@@ -107,65 +107,22 @@ async def predict_cycle(
     response_model=TrainingResponse,
     status_code=status.HTTP_200_OK,
     summary="Train prediction model",
-    response_description="Training results and model metrics"
+    response_description="Training results and model metrics",
+    deprecated=True
 )
 async def train_model(
     cycles: List[CycleData],
     current_user: dict = Depends(get_current_user)
-) -> Dict[str, Any]:
+):
     """
-    Train or retrain the cycle prediction model with new data.
+    This endpoint is deprecated. The system now uses Firebase AI for predictions.
     
-    - **cycles**: List of historical cycle data for training
-    - Returns: Training results and model metrics
+    - **cycles**: List of historical cycle data (not used in current implementation)
+    - Returns: Information about the deprecation
     """
-    logger.info(f"Training request received for user {current_user['id']}")
-    
-    try:
-        if len(cycles) < 3:
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST, 
-                detail=f"At least 3 cycles are required for training, got {len(cycles)}"
-            )
-        
-        # Convert Pydantic models to dicts
-        cycle_dicts = [cycle.dict() for cycle in cycles]
-        
-        # Train the model
-        predictor = CyclePredictor()
-        training_result = predictor.train(cycle_dicts)
-        
-        # Log successful training
-        logger.info(
-            f"Model training successful for user {current_user['id']}. "
-            f"Train score: {training_result.get('train_score', 0):.3f}, "
-            f"Test score: {training_result.get('test_score', 0):.3f}"
-        )
-        
-        return {
-            "status": "success",
-            "message": "Model trained successfully",
-            "metrics": {
-                "train_score": training_result.get("train_score"),
-                "test_score": training_result.get("test_score"),
-                "n_samples": training_result.get("n_samples"),
-                "feature_importances": training_result.get("feature_importances", {})
-            },
-            "user_id": current_user["id"]
-        }
-        
-    except ValueError as ve:
-        logger.warning(f"Validation error in training: {str(ve)}")
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail=str(ve)
-        )
-    except HTTPException:
-        # Re-raise HTTP exceptions as-is
-        raise
-    except Exception as e:
-        logger.error(f"Training error: {str(e)}", exc_info=True)
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="An error occurred while training the model"
-        )
+    return {
+        "status": "success",
+        "message": "The training endpoint is deprecated. The system now uses Firebase AI for predictions.",
+        "metrics": {},
+        "user_id": current_user['uid']
+    }

@@ -1,4 +1,5 @@
-from pydantic import BaseSettings, AnyHttpUrl, validator, Field, DirectoryPath, FilePath
+from pydantic import AnyHttpUrl, validator, Field, DirectoryPath, FilePath
+from pydantic_settings import BaseSettings
 from typing import List, Optional, Dict, Any, Union
 import os
 from pathlib import Path
@@ -51,10 +52,19 @@ class Settings(BaseSettings):
     FIREBASE_API_KEY: str = os.getenv("FIREBASE_API_KEY", "")
     FIREBASE_AUTH_DOMAIN: str = os.getenv("FIREBASE_AUTH_DOMAIN", "")
     FIREBASE_PROJECT_ID: str = os.getenv("FIREBASE_PROJECT_ID", "")
-    
+    FIREBASE_STORAGE_BUCKET: str = os.getenv("FIREBASE_STORAGE_BUCKET", "")
+    FIREBASE_MESSAGING_SENDER_ID: str = os.getenv("FIREBASE_MESSAGING_SENDER_ID", "")
+    FIREBASE_APP_ID: str = os.getenv("FIREBASE_APP_ID", "")
+
     # ML Model Configuration
     ML_MODELS_DIR: str = str(BASE_DIR / "aiml" / "models")
     ML_LOGS_DIR: str = str(BASE_DIR / "aiml" / "logs")
+    
+    # Gemini AI Configuration
+    GEMINI_API_KEY: str = os.getenv("GEMINI_API_KEY", "")
+    GEMINI_MODEL_NAME: str = os.getenv("GEMINI_MODEL_NAME", "gemini-2.5-flash")
+    GEMINI_TEMPERATURE: float = float(os.getenv("GEMINI_TEMPERATURE", "0.2"))
+    GEMINI_MAX_TOKENS: int = int(os.getenv("GEMINI_MAX_TOKENS", "1024"))
     
     # Cycle Prediction Model
     CYCLE_PREDICTION_ENABLED: bool = os.getenv("CYCLE_PREDICTION_ENABLED", "True").lower() == "true"
@@ -100,7 +110,7 @@ class Settings(BaseSettings):
         case_sensitive = True
         env_file = ".env"
         env_file_encoding = "utf-8"
-        env_file = ".env"
+        extra = "allow"  # Allow extra fields in .env without raising validation errors
 
 # Create settings instance
 settings = Settings()

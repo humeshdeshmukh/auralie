@@ -1,208 +1,201 @@
-import React, { useEffect, useState } from 'react';
-import { CycleData } from '@/app/cycle-tracking/page';
-import { predictNextCycle } from '@/services/predictionService';
-import { useAuth } from '@/contexts/AuthContext';
-import { format, isBefore, differenceInDays } from 'date-fns';
+'use client';
+
+import { useEffect, useMemo } from 'react';
+import { format, addDays, differenceInDays, isWithinInterval } from 'date-fns';
+
+interface CycleData {
+  id?: string;
+  startDate: string;
+  endDate?: string;
+  cycleLength?: number;
+  periodLength?: number;
+  symptoms?: string[];
+  notes?: string;
+  createdAt?: Date;
+  updatedAt?: Date;
+  isPeriodStart?: boolean;
+  isPeriodEnd?: boolean;
+  date?: string; // For entries
+  flow?: string;
+  mood?: string;
+}
 
 interface CycleStatusProps {
-  cycle: CycleData | null;
-  cycles: CycleData[]; // Add cycles prop for prediction
+  currentCycle: CycleData | null;
+  entries: CycleData[];
+  onCycleStart?: (date: Date) => void;
+  onCycleEnd?: (date: Date) => void;
 }
 
-interface Prediction {
-  next_period_date: string;
-  cycle_length: number;
-  fertile_window: {
-    start: string;
-    end: string;
-    ovulation_day: string;
-  };
-  confidence: 'low' | 'medium' | 'high';
-  model_used: string;
-  last_cycle_date: string;
-  message?: string;
-}
+function CycleStatus({ currentCycle, entries = [], onCycleStart, onCycleEnd }: CycleStatusProps) {
+  // Calculate average cycle length from entries
 
-const CycleStatus: React.FC<CycleStatusProps> = ({ cycle, cycles }) => {
-  const { user } = useAuth();
-  const [prediction, setPrediction] = useState<Prediction | null>(null);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  // Memoize the average cycle length calculation
+  const averageCycleLength = useMemo(() => {
+    if (entries.length <= 1) return 28; // Default to 28 days if not enough data
 
-  // Fetch prediction when cycles change
-  useEffect(() => {
-    const fetchPrediction = async () => {
-      if (!user || cycles.length === 0) return;
-      
-      try {
-        setLoading(true);
-        setError(null);
-        
-        // Only predict if we have at least one complete cycle
-        const validCycles = cycles.filter(c => c.startDate && c.periodLength);
-        if (validCycles.length >= 1) {
-          const token = await user.getIdToken();
-          const result = await predictNextCycle(validCycles, token);
-          setPrediction(result.prediction);
-        }
-      } catch (err) {
-        console.error('Error predicting next cycle:', err);
-        setError('Could not load prediction');
-      } finally {
-        setLoading(false);
-      }
-    };
+    const sortedEntries = [...entries]
+      .filter(e => e.startDate && e.endDate)
+      .sort((a, b) => new Date(a.startDate!).getTime() - new Date(b.startDate!).getTime());
 
-    fetchPrediction();
-  }, [cycles, user]);
+    if (sortedEntries.length <= 1) return 28;
 
-  const getCyclePhase = () => {
-    if (!cycle) return 'Not tracking';
+    const lengths = [];
+    for (let i = 1; i < sortedEntries.length; i++) {
+      const prevEnd = new Date(sortedEntries[i - 1].endDate!);
+      const currStart = new Date(sortedEntries[i].startDate!);
+      const length = differenceInDays(currStart, prevEnd);
+      if (length > 0) lengths.push(length);
+    }
+
+    return lengths.length > 0 
+      ? Math.round(lengths.reduce((a, b) => a + b, 0) / lengths.length)
+      : 28;
+  }, [entries]);
+
+  // Calculate cycle state using useMemo to avoid unnecessary recalculations
+  const {
+    day,
+    nextPeriod,
+    fertileWindow,
+    ovulationDate,
+    isFertile
+  } = useMemo(() => {
+    if (!currentCycle?.startDate) {
+      return {
+        day: null as number | null,
+        nextPeriod: null as Date | null,
+        fertileWindow: null as { start: Date; end: Date } | null,
+        ovulationDate: null as Date | null,
+        isFertile: false,
+        averageLength: averageCycleLength
+      };
+    }
+
+    const startDate = new Date(currentCycle.startDate);
+    const today = new Date();
+    const cycleLength = currentCycle.cycleLength || averageCycleLength;
     
-    const startDate = new Date(cycle.startDate);
+    // Calculate current cycle day (1-based)
+    const dayInCycle = differenceInDays(today, startDate) + 1;
+    
+    // Calculate next period date
+    const nextPeriodDate = addDays(startDate, cycleLength);
+    
+    // Calculate ovulation (typically around day 14 of a 28-day cycle)
+    const ovulationDay = Math.floor(cycleLength * 0.5);
+    const ovulation = addDays(startDate, ovulationDay);
+    
+    // Calculate fertile window (typically 5 days before ovulation to 1 day after)
+    const fertileWindowStart = addDays(ovulation, -5);
+    const fertileWindowEnd = addDays(ovulation, 1);
+    
+    return {
+      day: dayInCycle > 0 ? dayInCycle : null,
+      nextPeriod: nextPeriodDate,
+      fertileWindow: { start: fertileWindowStart, end: fertileWindowEnd },
+      ovulationDate: ovulation,
+      isFertile: isWithinInterval(today, { start: fertileWindowStart, end: fertileWindowEnd }),
+      averageLength: averageCycleLength
+    };
+  }, [currentCycle, averageCycleLength]);
+
+  // Handle cycle start/end based on entries
+  useEffect(() => {
+    if (!entries.length || (!onCycleStart && !onCycleEnd)) return;
+
+    const sortedEntries = [...entries].sort(
+      (a, b) => new Date(a.date || '').getTime() - new Date(b.date || '').getTime()
+    );
+
+    const mostRecentEntry = sortedEntries[sortedEntries.length - 1];
+    
+    if (mostRecentEntry.isPeriodStart && onCycleStart && mostRecentEntry.date) {
+      onCycleStart(new Date(mostRecentEntry.date));
+    } else if (mostRecentEntry.isPeriodEnd && onCycleEnd && mostRecentEntry.date) {
+      onCycleEnd(new Date(mostRecentEntry.date));
+    }
+  }, [entries, onCycleStart, onCycleEnd]);
+
+  const cyclePhase = useMemo(() => {
+    if (!currentCycle?.startDate) return 'Not tracking';
+    
+    const startDate = new Date(currentCycle.startDate);
     const today = new Date();
     
-    // If we have an end date, we're between cycles
-    if (cycle.endDate) {
+    if (currentCycle.endDate) {
       return 'In between cycles';
     }
     
-    // Otherwise, calculate day of current cycle
     const day = Math.ceil((today.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24));
     return `Day ${day} of cycle`;
-  };
-
-  const getNextPeriodDate = () => {
-    if (prediction) {
-      return format(new Date(prediction.next_period_date), 'MMM d, yyyy');
-    }
-    
-    // Fallback to default calculation
-    if (!cycle) return '--';
-    const nextDate = new Date(cycle.startDate);
-    nextDate.setDate(nextDate.getDate() + (cycle.cycleLength || 28));
-    return format(nextDate, 'MMM d, yyyy');
-  };
-
-  const getFertileWindow = () => {
-    if (prediction) {
-      const start = new Date(prediction.fertile_window.start);
-      const end = new Date(prediction.fertile_window.end);
-      const today = new Date();
-      
-      if (isBefore(today, start)) {
-        const daysUntil = differenceInDays(start, today);
-        return `In ${daysUntil} day${daysUntil !== 1 ? 's' : ''}`;
-      } else if (isBefore(today, end) || isSameDay(today, end)) {
-        return 'Now';
-      } else {
-        return 'Passed';
-      }
-    }
-    
-    return '--';
-  };
-
-  const getOvulationStatus = () => {
-    if (!prediction) return '--';
-    
-    const ovulationDate = new Date(prediction.fertile_window.ovulation_day);
-    const today = new Date();
-    
-    if (isSameDay(today, ovulationDate)) {
-      return 'Today';
-    } else if (isBefore(today, ovulationDate)) {
-      const daysUntil = differenceInDays(ovulationDate, today);
-      return `In ${daysUntil} day${daysUntil !== 1 ? 's' : ''}`;
-    } else {
-      return 'Passed';
-    }
-  };
-
-  // Helper function to check if two dates are the same day
-  const isSameDay = (date1: Date, date2: Date) => {
-    return (
-      date1.getFullYear() === date2.getFullYear() &&
-      date1.getMonth() === date2.getMonth() &&
-      date1.getDate() === date2.getDate()
-    );
-  };
+  }, [currentCycle]);
 
   return (
     <div className="bg-white rounded-lg shadow p-6">
-      <div className="flex justify-between items-start">
+      <div className="flex justify-between items-start mb-6">
         <div>
-          <h2 className="text-xl font-semibold text-gray-800">Current Cycle</h2>
-          <p className="text-gray-600 mt-1">{getCyclePhase()}</p>
+          <h2 className="text-lg font-medium text-gray-900">Cycle Status</h2>
+          <p className="text-sm text-gray-500">
+            {currentCycle?.startDate 
+              ? `Started on ${format(new Date(currentCycle.startDate), 'MMM d, yyyy')}`
+              : cyclePhase}
+          </p>
         </div>
-        <span className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-pink-100 text-pink-800">
-          {cycle ? (cycle.endDate ? 'Inactive' : 'Active') : 'Not Started'}
+        <span className={`px-3 py-1 rounded-full text-xs font-medium ${
+          isFertile ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800'
+        }`}>
+          {isFertile ? 'Fertile Window' : 'Not Fertile'}
         </span>
       </div>
 
-      {loading && (
-        <div className="mt-4 text-center py-4">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-pink-500 mx-auto"></div>
-          <p className="text-sm text-gray-500 mt-2">Updating predictions...</p>
-        </div>
-      )}
-
-      {error && (
-        <div className="mt-4 p-3 bg-red-50 text-red-700 rounded-md text-sm">
-          {error}
-        </div>
-      )}
-
-      <div className="mt-6 grid grid-cols-2 gap-4">
-        <div>
-          <p className="text-sm text-gray-500">Cycle Day</p>
-          <p className="text-2xl font-semibold">
-            {cycle ? Math.ceil((new Date().getTime() - new Date(cycle.startDate).getTime()) / (1000 * 60 * 60 * 24)) : '--'}
-          </p>
-        </div>
-        <div>
-          <p className="text-sm text-gray-500">Next Period</p>
-          <p className="text-2xl font-semibold">{getNextPeriodDate()}</p>
-          {prediction && (
-            <p className="text-xs text-gray-500 mt-1">
-              {prediction.confidence === 'high' ? '✓' : prediction.confidence === 'medium' ? '~' : '?'} 
-              {prediction.confidence} confidence
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <div className="space-y-4">
+          <div>
+            <p className="text-sm text-gray-500">Cycle Day</p>
+            <p className="text-3xl font-bold">{day || '--'}</p>
+          </div>
+          <div>
+            <p className="text-sm text-gray-500">Next Period</p>
+            <p className="text-xl font-semibold">
+              {nextPeriod ? format(nextPeriod, 'MMM d, yyyy') : '--'}
             </p>
-          )}
+            {nextPeriod && (
+              <p className="text-sm text-gray-500">
+                in {Math.ceil(differenceInDays(nextPeriod, new Date()))} days
+              </p>
+            )}
+          </div>
         </div>
-        <div>
-          <p className="text-sm text-gray-500">Fertile Window</p>
-          <p className="text-2xl font-semibold">{getFertileWindow()}</p>
-          {prediction && prediction.fertile_window && (
-            <p className="text-xs text-gray-500 mt-1">
-              {format(new Date(prediction.fertile_window.start), 'MMM d')} - 
-              {format(new Date(prediction.fertile_window.end), 'MMM d')}
+        <div className="space-y-4">
+          <div>
+            <p className="text-sm text-gray-500">Ovulation</p>
+            <p className="text-xl font-semibold">
+              {ovulationDate ? format(ovulationDate, 'MMM d, yyyy') : '--'}
             </p>
+            {ovulationDate && (
+              <p className="text-sm text-gray-500">
+                {isWithinInterval(new Date(), {
+                  start: addDays(ovulationDate, -1),
+                  end: addDays(ovulationDate, 1)
+                }) ? (
+                  'Today is around ovulation'
+                ) : differenceInDays(ovulationDate, new Date()) > 0 ? (
+                  `in ${differenceInDays(ovulationDate, new Date())} days`
+                ) : (
+                  'Passed'
+                )}
+              </p>
+            )}
+          </div>
+          {fertileWindow && (
+            <div>
+              <p className="text-sm text-gray-500">Fertile Window</p>
+              <p className="text-lg font-semibold">
+                {format(fertileWindow.start, 'MMM d')} - {format(fertileWindow.end, 'MMM d')}
+              </p>
+            </div>
           )}
-        </div>
-        <div>
-          <p className="text-sm text-gray-500">Ovulation</p>
-          <p className="text-2xl font-semibold">
-            {getOvulationStatus()}
-          </p>
-          {prediction?.fertile_window?.ovulation_day && (
-            <p className="text-xs text-gray-500 mt-1">
-              {format(new Date(prediction.fertile_window.ovulation_day), 'MMM d, yyyy')}
-            </p>
-          )}
-        </div>
-      </div>
-
-      <div className="mt-6 pt-4 border-t border-gray-200">
-        <div className="flex items-center justify-between">
-          <span className="text-sm font-medium text-gray-700">Cycle Progress</span>
-          <span className="text-sm text-gray-500">3/28 days</span>
-        </div>
-        <div className="mt-2 w-full bg-gray-200 rounded-full h-2.5">
-          <div 
-            className="bg-pink-600 h-2.5 rounded-full" 
-            style={{ width: '15%' }}
-          ></div>
         </div>
       </div>
     </div>

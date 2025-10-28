@@ -1,5 +1,5 @@
 import firebase_admin
-from firebase_admin import credentials, auth, firestore, storage, exceptions
+from firebase_admin import credentials, auth, firestore, storage, exceptions, db
 from fastapi import HTTPException, status, Depends, Request
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from typing import Optional, Dict, Any, List
@@ -11,8 +11,8 @@ from ..core.config import settings
 # Initialize Firebase Admin SDK
 def initialize_firebase():
     if not firebase_admin._apps:
-        # Parse the FIREBASE_CREDENTIALS_JSON from environment variable
-        cred_dict = json.loads(settings.FIREBASE_CREDENTIALS_JSON)
+        # Get Firebase credentials from settings
+        cred_dict = settings.FIREBASE_CREDENTIALS
         
         cred = credentials.Certificate(cred_dict)
         firebase_admin.initialize_app(cred, {
