@@ -42,32 +42,22 @@ export default function Header() {
       )
     },
     {
-      name: 'Cycle',
-      href: '/cycle-prediction',
+      name: 'Cycle Tracking',
+      href: '/cycle-tracking',
       icon: (
         <svg className="w-5 h-5 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
         </svg>
-      ),
-      dropdown: [
-        { name: 'Predict Cycles', href: '/cycle-prediction' },
-        { name: 'Cycle History', href: '/cycle-history' },
-        { name: 'Patterns', href: '/cycle-patterns' }
-      ]
+      )
     },
     {
-      name: 'Track',
-      href: '/track-symptoms',
+      name: 'Health Logs',
+      href: '/health-logs',
       icon: (
         <svg className="w-5 h-5 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
         </svg>
-      ),
-      dropdown: [
-        { name: 'Daily Logs', href: '/track/daily' },
-        { name: 'Symptom Tracker', href: '/track/symptoms' },
-        { name: 'Health Metrics', href: '/track/metrics' }
-      ]
+      )
     },
     {
       name: 'Fertility',
@@ -76,15 +66,10 @@ export default function Header() {
         <svg className="w-5 h-5 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
         </svg>
-      ),
-      dropdown: [
-        { name: 'Fertility Window', href: '/fertility/window' },
-        { name: 'Ovulation Tracker', href: '/fertility/ovulation' },
-        { name: 'Conception Tips', href: '/fertility/conception' }
-      ]
+      )
     },
     {
-      name: 'Knowledge',
+      name: 'Knowledge Base',
       href: '/knowledge',
       icon: (
         <svg className="w-5 h-5 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">

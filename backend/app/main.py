@@ -1,24 +1,26 @@
-from fastapi import FastAPI, Depends, HTTPException, status
+from fastapi import FastAPI, Depends
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.security import OAuth2PasswordBearer
-from typing import List, Optional
-import uvicorn
-import os
-
+from .api.v1 import api_router
 from .core.config import settings
-from .api.endpoints import users, auth, cycles, symptoms, predictions, database
-from .services.firebase_service import firebase_service
+import logging
+
+# Configure logging
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+)
+logger = logging.getLogger(__name__)
 
 app = FastAPI(
-    title=settings.SERVER_NAME,
-    description="Auralie API - AI-Powered Menstrual Health Assistant",
-    version="0.1.0",
-    docs_url="/api/docs",
-    redoc_url="/api/redoc",
-    openapi_url="/api/openapi.json"
+    title=settings.PROJECT_NAME,
+    version=settings.VERSION,
+    description="Auralie API for cycle tracking and prediction",
+    openapi_url=f"{settings.API_V1_STR}/openapi.json",
+    docs_url="/docs",
+    redoc_url="/redoc"
 )
 
-# CORS middleware
+# Set up CORS
 app.add_middleware(
     CORSMiddleware,
     allow_origins=settings.BACKEND_CORS_ORIGINS,
@@ -27,64 +29,39 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# OAuth2 scheme for token authentication
-oauth2_scheme = OAuth2PasswordBearer(tokenUrl="api/v1/auth/token")
+# Include API routes
+app.include_router(api_router, prefix=settings.API_V1_STR)
 
-# Include API routers
-app.include_router(auth.router, prefix="/api/v1/auth", tags=["Authentication"])
-app.include_router(users.router, prefix="/api/v1/users", tags=["Users"])
-app.include_router(cycles.router, prefix="/api/v1/cycles", tags=["Menstrual Cycles"])
-app.include_router(symptoms.router, prefix="/api/v1/symptoms", tags=["Symptom Tracking"])
-app.include_router(predictions.router, prefix="/api/v1/predictions", tags=["AI Predictions"])
-app.include_router(database.router, prefix="/api/v1/db", tags=["Database"])
+# Health check endpoint
+@app.get("/health")
+async def health_check():
+    return {
+        "status": "ok",
+        "environment": settings.ENVIRONMENT,
+        "version": settings.VERSION
+    }
 
-@app.on_event("startup")
-async def startup_event():
-    """Initialize Firebase on startup"""
-    try:
-        # This will initialize Firebase if not already initialized
-        firebase_service
-    except Exception as e:
-        print(f"Error initializing Firebase: {str(e)}")
-        raise
-
+# Root endpoint
 @app.get("/")
 async def root():
     return {
         "message": "Welcome to Auralie API",
-        "docs": "/api/docs",
-        "version": "0.1.0"
+        "version": settings.VERSION,
+        "docs": "/docs",
+        "redoc": "/redoc"
     }
 
-@app.get("/health")
-async def health_check():
-    try:
-        # Simple health check that verifies Firebase is initialized
-        if firebase_service is not None:
-            return {
-                "status": "healthy",
-                "services": {
-                    "database": "connected",
-                    "authentication": "available"
-                }
-            }
-        return {
-            "status": "degraded",
-            "services": {
-                "database": "disconnected",
-                "authentication": "unknown"
-            }
-        }
-    except Exception as e:
-        return {
-            "status": "unhealthy",
-            "error": str(e),
-            "services": {
-                "database": "error",
-                "authentication": "error"
-            }
-        }
+# Handle startup events
+@app.on_event("startup")
+async def startup_event():
+    logger.info("Starting Auralie API...")
+    # Initialize any required services here
+    from .services.predict_service import PredictService
+    # This will initialize the model on startup
+    predictor = PredictService()
+    logger.info("Auralie API started successfully")
 
-# For development
-if __name__ == "__main__":
-    uvicorn.run("app.main:app", host="0.0.0.0", port=8000, reload=True)
+# Handle shutdown events
+@app.on_event("shutdown")
+async def shutdown_event():
+    logger.info("Shutting down Auralie API...")

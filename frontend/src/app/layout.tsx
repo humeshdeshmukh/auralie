@@ -19,14 +19,30 @@ const inter = Inter({
 //   viewport: "width=device-width, initial-scale=1",
 // };
 
+// Client-side only code to remove Grammarly attributes
+export function removeGrammarlyAttributes() {
+  if (typeof window !== 'undefined') {
+    document.body.removeAttribute('data-new-gr-c-s-check-loaded');
+    document.body.removeAttribute('data-gr-ext-installed');
+  }
+}
+
 export default function RootLayout({
   children,
-}: Readonly<{
-  children: React.ReactNode;
-}>) {
+}: {
+  children: React.ReactNode
+}) {
+  // Remove Grammarly attributes on client-side
+  if (typeof window !== 'undefined') {
+    removeGrammarlyAttributes();
+  }
+
   return (
     <html lang="en">
-      <body className={`${inter.variable} font-sans antialiased min-h-screen flex flex-col`}>
+      <body 
+        className={`${inter.variable} font-sans antialiased min-h-screen flex flex-col`}
+        suppressHydrationWarning
+      >
         <AuthProvider>
           <Header />
           <main className="flex-grow">{children}</main>
