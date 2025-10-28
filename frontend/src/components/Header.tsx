@@ -32,38 +32,65 @@ export default function Header() {
   };
 
   const navItems = [
-    
     {
-      name: 'Cycles',
-      href: '#cycles',
-      icon: null,
-      dropdown: ['Predict Cycles', 'Cycle History', 'Patterns']
+      name: 'Dashboard',
+      href: '/dashboard',
+      icon: (
+        <svg className="w-5 h-5 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6z M14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6z M4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2z M14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z" />
+        </svg>
+      )
+    },
+    {
+      name: 'Cycle',
+      href: '/cycle-prediction',
+      icon: (
+        <svg className="w-5 h-5 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+        </svg>
+      ),
+      dropdown: [
+        { name: 'Predict Cycles', href: '/cycle-prediction' },
+        { name: 'Cycle History', href: '/cycle-history' },
+        { name: 'Patterns', href: '/cycle-patterns' }
+      ]
     },
     {
       name: 'Track',
-      href: '#track',
-      icon: null,
-      dropdown: ['Track Symptoms', 'Daily Logs', 'Health Metrics']
+      href: '/track-symptoms',
+      icon: (
+        <svg className="w-5 h-5 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
+        </svg>
+      ),
+      dropdown: [
+        { name: 'Daily Logs', href: '/track/daily' },
+        { name: 'Symptom Tracker', href: '/track/symptoms' },
+        { name: 'Health Metrics', href: '/track/metrics' }
+      ]
     },
     {
-      name: 'Chances',
-      href: '#chances',
-      icon: null,
-      dropdown: ['Fertility Window', 'Ovulation', 'Conception']
+      name: 'Fertility',
+      href: '/fertility',
+      icon: (
+        <svg className="w-5 h-5 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+        </svg>
+      ),
+      dropdown: [
+        { name: 'Fertility Window', href: '/fertility/window' },
+        { name: 'Ovulation Tracker', href: '/fertility/ovulation' },
+        { name: 'Conception Tips', href: '/fertility/conception' }
+      ]
     },
-    { name: 'Knowledge', href: '#knowledge', icon: null },
-    { name: 'Community', href: '#community', icon: null },
-    { 
-      name: 'About', 
-      href: '#about', 
-      icon: null,
-      onClick: (e: React.MouseEvent) => {
-        e.preventDefault();
-        const aboutSection = document.getElementById('about');
-        if (aboutSection) {
-          aboutSection.scrollIntoView({ behavior: 'smooth' });
-        }
-      }
+    {
+      name: 'Knowledge',
+      href: '/knowledge',
+      icon: (
+        <svg className="w-5 h-5 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" />
+        </svg>
+      )
     }
   ];
 
@@ -81,48 +108,41 @@ export default function Header() {
             </Link>
 
             {/* Desktop Navigation */}
-            <nav className="hidden lg:flex items-center space-x-2">
+            <nav className="hidden lg:flex items-center space-x-1">
               {navItems.map((item) => (
                 <div key={item.name} className="relative group">
-                  <a
+                  <Link
                     href={item.href}
-                    className="px-4 py-2.5 text-sm font-medium text-text-secondary hover:text-primary rounded-lg hover:bg-background-secondary/30 transition-colors duration-200 flex items-center"
+                    className="px-4 py-2.5 text-sm font-medium text-gray-700 hover:text-pink-600 rounded-lg hover:bg-gray-50 transition-colors duration-200 flex items-center"
                     onClick={(e) => {
                       if (item.onClick) {
                         item.onClick(e);
-                      } else if (item.href.startsWith('#')) {
-                        e.preventDefault();
-                        const section = document.getElementById(item.href.substring(1));
-                        if (section) {
-                          section.scrollIntoView({ behavior: 'smooth' });
-                        }
                       }
                     }}
                   >
-                    {item.name}
+                    {item.icon}
+                    <span className="ml-1">{item.name}</span>
                     {item.dropdown && (
                       <svg className="w-4 h-4 ml-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
                       </svg>
                     )}
-                  </a>
+                  </Link>
 
-                  {/* Enhanced Dropdown */}
-                  {item.dropdown && activeDropdown === item.name && (
-                    <div className="absolute top-full left-1/2 transform -translate-x-1/2 mt-2 w-56 bg-white rounded-xl shadow-lg border border-gray-100 py-2 opacity-0 group-hover:opacity-100 transition-all duration-200 scale-95 group-hover:scale-100">
-                      <div className="px-3 mb-1">
-                        <div className="h-px bg-gradient-to-r from-transparent via-gray-100 to-transparent"></div>
+                  {/* Dropdown Menu */}
+                  {item.dropdown && (
+                    <div className="absolute left-0 mt-1 w-56 origin-top-left bg-white rounded-md shadow-lg ring-1 ring-black ring-opacity-5 focus:outline-none opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 transform -translate-y-1 group-hover:translate-y-0">
+                      <div className="py-1">
+                        {item.dropdown.map((subItem) => (
+                          <Link
+                            key={subItem.name}
+                            href={subItem.href}
+                            className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 hover:text-pink-600 transition-colors duration-150"
+                          >
+                            {subItem.name}
+                          </Link>
+                        ))}
                       </div>
-                      {item.dropdown.map((dropdownItem) => (
-                        <a
-                          key={dropdownItem}
-                          href={`${item.href}/${dropdownItem.toLowerCase().replace(' ', '-')}`}
-                          className="flex items-center px-6 py-2.5 text-sm text-text-secondary hover:bg-primary/5 hover:text-primary transition-all duration-200"
-                        >
-                          <div className="w-1.5 h-1.5 bg-primary rounded-full mr-3 opacity-0 group-hover:opacity-100 transition-opacity duration-200"></div>
-                          {dropdownItem}
-                        </a>
-                      ))}
                     </div>
                   )}
                 </div>
@@ -134,44 +154,76 @@ export default function Header() {
               {!loading && (
                 user ? (
                   <div className="hidden md:flex items-center space-x-4">
-                    <Link 
-                      href="/dashboard"
-                      className="px-4 py-2 text-sm font-medium text-text-secondary hover:text-primary"
-                    >
-                      Dashboard
-                    </Link>
-                    <button 
-                      onClick={handleSignOut}
-                      className="bg-primary text-white px-4 py-2 rounded-full text-sm font-medium hover:bg-primary/90 transition-colors"
-                    >
-                      Sign Out
-                    </button>
+                    <div className="relative group">
+                      <button className="flex items-center space-x-1 text-sm font-medium text-gray-700 hover:text-pink-600">
+                        <div className="w-8 h-8 rounded-full bg-pink-100 flex items-center justify-center">
+                          <span className="text-pink-600 font-medium">
+                            {user.email?.charAt(0).toUpperCase()}
+                          </span>
+                        </div>
+                        <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                        </svg>
+                      </button>
+                      <div className="absolute right-0 mt-2 w-48 origin-top-right bg-white rounded-md shadow-lg ring-1 ring-black ring-opacity-5 focus:outline-none opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200">
+                        <div className="py-1">
+                          <Link
+                            href="/profile"
+                            className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 hover:text-pink-600"
+                          >
+                            Profile
+                          </Link>
+                          <Link
+                            href="/settings"
+                            className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 hover:text-pink-600"
+                          >
+                            Settings
+                          </Link>
+                          <button
+                            onClick={handleSignOut}
+                            className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 hover:text-pink-600"
+                          >
+                            Sign out
+                          </button>
+                        </div>
+                      </div>
+                    </div>
                   </div>
                 ) : (
                   <div className="hidden md:flex items-center space-x-3">
                     <Link 
                       href="/login"
-                      className="px-4 py-2 text-sm font-medium text-text-secondary hover:text-primary"
+                      className="px-4 py-2 text-sm font-medium text-gray-700 hover:text-pink-600"
                     >
                       Sign In
                     </Link>
                     <Link 
                       href="/signup"
-                      className="bg-primary text-white px-4 py-2 rounded-full text-sm font-medium hover:bg-primary/90 transition-colors"
+                      className="bg-pink-600 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-pink-700 transition-colors"
                     >
-                      Sign Up
+                      Get Started
                     </Link>
                   </div>
                 )
               )}
               
-              {/* Mobile auth buttons */}
+              {/* Mobile auth button */}
               <div className="md:hidden">
-                {!loading && user && (
+                {!loading && user ? (
                   <Link 
-                    href="/dashboard"
-                    className="text-text-secondary hover:text-primary"
-                    onClick={() => setIsMobileMenuOpen(false)}
+                    href="/profile"
+                    className="text-gray-700 hover:text-pink-600"
+                  >
+                    <div className="w-8 h-8 rounded-full bg-pink-100 flex items-center justify-center">
+                      <span className="text-pink-600 font-medium">
+                        {user.email?.charAt(0).toUpperCase()}
+                      </span>
+                    </div>
+                  </Link>
+                ) : (
+                  <Link 
+                    href="/login"
+                    className="text-gray-700 hover:text-pink-600"
                   >
                     <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
