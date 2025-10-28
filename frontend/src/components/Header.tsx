@@ -1,10 +1,35 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
+import { auth } from '@/lib/firebase';
+import { signOut } from 'firebase/auth';
+import Link from 'next/link';
 
 export default function Header() {
   const [activeDropdown, setActiveDropdown] = useState<string | null>(null);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const [user, setUser] = useState(auth.currentUser);
+  const [loading, setLoading] = useState(true);
+  const router = useRouter();
+
+  useEffect(() => {
+    const unsubscribe = auth.onAuthStateChanged((user) => {
+      setUser(user);
+      setLoading(false);
+    });
+
+    return () => unsubscribe();
+  }, []);
+
+  const handleSignOut = async () => {
+    try {
+      await signOut(auth);
+      router.push('/login');
+    } catch (error) {
+      console.error('Error signing out:', error);
+    }
+  };
 
   const navItems = [
     
@@ -28,7 +53,18 @@ export default function Header() {
     },
     { name: 'Knowledge', href: '#knowledge', icon: null },
     { name: 'Community', href: '#community', icon: null },
-    { name: 'About', href: '#about', icon: null }
+    { 
+      name: 'About', 
+      href: '#about', 
+      icon: null,
+      onClick: (e: React.MouseEvent) => {
+        e.preventDefault();
+        const aboutSection = document.getElementById('about');
+        if (aboutSection) {
+          aboutSection.scrollIntoView({ behavior: 'smooth' });
+        }
+      }
+    }
   ];
 
   return (
@@ -37,32 +73,35 @@ export default function Header() {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex items-center justify-between h-20">
             {/* Logo */}
-            <div className="flex items-center space-x-3">
+            <Link href="/" className="flex items-center space-x-3 hover:opacity-80 transition-opacity">
               <div className="w-10 h-10 bg-primary rounded-lg flex items-center justify-center shadow-md">
                 <span className="text-white font-bold text-lg">A</span>
               </div>
               <h1 className="text-2xl font-bold text-text-primary tracking-tight">Auralie</h1>
-            </div>
+            </Link>
 
             {/* Desktop Navigation */}
-            <nav className="hidden lg:flex items-center space-x-1">
+            <nav className="hidden lg:flex items-center space-x-2">
               {navItems.map((item) => (
                 <div key={item.name} className="relative group">
                   <a
                     href={item.href}
-                    className="flex items-center px-4 py-3 text-text-secondary hover:text-primary transition-all duration-200 font-medium text-sm tracking-wide rounded-lg hover:bg-background-secondary/50"
-                    onMouseEnter={() => setActiveDropdown(item.name)}
-                    onMouseLeave={() => setActiveDropdown(null)}
+                    className="px-4 py-2.5 text-sm font-medium text-text-secondary hover:text-primary rounded-lg hover:bg-background-secondary/30 transition-colors duration-200 flex items-center"
+                    onClick={(e) => {
+                      if (item.onClick) {
+                        item.onClick(e);
+                      } else if (item.href.startsWith('#')) {
+                        e.preventDefault();
+                        const section = document.getElementById(item.href.substring(1));
+                        if (section) {
+                          section.scrollIntoView({ behavior: 'smooth' });
+                        }
+                      }
+                    }}
                   >
-                    {item.icon && <span className="mr-2">{item.icon}</span>}
                     {item.name}
                     {item.dropdown && (
-                      <svg 
-                        className="ml-2 w-4 h-4 transition-transform group-hover:rotate-180" 
-                        fill="none" 
-                        stroke="currentColor" 
-                        viewBox="0 0 24 24"
-                      >
+                      <svg className="w-4 h-4 ml-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
                       </svg>
                     )}
@@ -90,19 +129,56 @@ export default function Header() {
               ))}
             </nav>
 
-            {/* CTA Section */}
+            {/* Auth Section */}
             <div className="flex items-center space-x-4">
-              <button className="hidden sm:flex items-center bg-primary text-white px-6 py-2.5 rounded-full font-semibold text-sm hover:bg-primary/90 hover:shadow-button-hover transition-all duration-200 transform hover:-translate-y-0.5">
-                Get Started
-                <svg 
-                  className="ml-2 w-4 h-4" 
-                  fill="none" 
-                  stroke="currentColor" 
-                  viewBox="0 0 24 24"
-                >
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7l5 5m0 0l-5 5m5-5H6" />
-                </svg>
-              </button>
+              {!loading && (
+                user ? (
+                  <div className="hidden md:flex items-center space-x-4">
+                    <Link 
+                      href="/dashboard"
+                      className="px-4 py-2 text-sm font-medium text-text-secondary hover:text-primary"
+                    >
+                      Dashboard
+                    </Link>
+                    <button 
+                      onClick={handleSignOut}
+                      className="bg-primary text-white px-4 py-2 rounded-full text-sm font-medium hover:bg-primary/90 transition-colors"
+                    >
+                      Sign Out
+                    </button>
+                  </div>
+                ) : (
+                  <div className="hidden md:flex items-center space-x-3">
+                    <Link 
+                      href="/login"
+                      className="px-4 py-2 text-sm font-medium text-text-secondary hover:text-primary"
+                    >
+                      Sign In
+                    </Link>
+                    <Link 
+                      href="/signup"
+                      className="bg-primary text-white px-4 py-2 rounded-full text-sm font-medium hover:bg-primary/90 transition-colors"
+                    >
+                      Sign Up
+                    </Link>
+                  </div>
+                )
+              )}
+              
+              {/* Mobile auth buttons */}
+              <div className="md:hidden">
+                {!loading && user && (
+                  <Link 
+                    href="/dashboard"
+                    className="text-text-secondary hover:text-primary"
+                    onClick={() => setIsMobileMenuOpen(false)}
+                  >
+                    <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                    </svg>
+                  </Link>
+                )}
+              </div>
 
               {/* Mobile menu button */}
               <button
@@ -129,7 +205,18 @@ export default function Header() {
                   <a
                     href={item.href}
                     className="block px-4 py-3 text-base font-medium text-text-primary hover:text-primary hover:bg-background-secondary/30 rounded-lg transition-colors duration-200"
-                    onClick={() => setIsMobileMenuOpen(false)}
+                    onClick={(e) => {
+                      if (item.onClick) {
+                        item.onClick(e);
+                      } else if (item.href.startsWith('#')) {
+                        e.preventDefault();
+                        const section = document.getElementById(item.href.substring(1));
+                        if (section) {
+                          section.scrollIntoView({ behavior: 'smooth' });
+                        }
+                      }
+                      setIsMobileMenuOpen(false);
+                    }}
                   >
                     <div className="flex items-center justify-between">
                       {item.name}
@@ -169,16 +256,35 @@ export default function Header() {
                   )}
                 </div>
               ))}
-              <div className="pt-3 mt-2">
-                <button 
-                  className="w-full flex items-center justify-center bg-primary text-white px-6 py-2.5 rounded-full text-sm font-semibold hover:bg-primary/90 hover:shadow-button-hover transition-all duration-200 transform hover:-translate-y-0.5"
-                  onClick={() => setIsMobileMenuOpen(false)}
-                >
-                  Get Started
-                  <svg className="ml-2 w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7l5 5m0 0l-5 5m5-5H6" />
-                  </svg>
-                </button>
+              <div className="pt-3 mt-2 space-y-2">
+                {!loading && !user ? (
+                  <>
+                    <Link 
+                      href="/login"
+                      className="block w-full text-center bg-primary text-white px-6 py-2.5 rounded-full text-sm font-semibold hover:bg-primary/90 hover:shadow-button-hover transition-all duration-200"
+                      onClick={() => setIsMobileMenuOpen(false)}
+                    >
+                      Sign In
+                    </Link>
+                    <Link 
+                      href="/signup"
+                      className="block w-full text-center border border-primary text-primary bg-white px-6 py-2.5 rounded-full text-sm font-semibold hover:bg-gray-50 transition-all duration-200"
+                      onClick={() => setIsMobileMenuOpen(false)}
+                    >
+                      Create Account
+                    </Link>
+                  </>
+                ) : (
+                  <button 
+                    onClick={() => {
+                      handleSignOut();
+                      setIsMobileMenuOpen(false);
+                    }}
+                    className="w-full text-center text-red-600 hover:bg-red-50 px-6 py-2.5 rounded-full text-sm font-medium transition-colors duration-200"
+                  >
+                    Sign Out
+                  </button>
+                )}
               </div>
             </div>
           </div>
