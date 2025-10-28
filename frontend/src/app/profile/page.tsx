@@ -1,11 +1,15 @@
 'use client';
 
-import { useState, useEffect, useCallback, useMemo } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/contexts/AuthContext';
-import { doc, getDoc, updateDoc } from 'firebase/firestore';
+import { doc, getDoc, setDoc, serverTimestamp } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import Image from 'next/image';
+
+// Simple in-memory cache
+const profileCache: Record<string, { data: any; timestamp: number }> = {};
+const CACHE_DURATION = 5 * 60 * 1000; // 5 minutes
 
 type UserProfile = {
   displayName: string;
@@ -24,51 +28,57 @@ type UserProfile = {
 export default function ProfilePage() {
   const { user } = useAuth();
   const router = useRouter();
-  const [loading, setLoading] = useState(true);
-  const [editing, setEditing] = useState(false);
-  const [profile, setProfile] = useState<UserProfile>({
-    displayName: '',
-    birthDate: '',
-    height: 0,
-    weight: 0,
-    bloodType: '',
-    lastPeriod: '',
-    cycleLength: 28,
-    periodLength: 5,
-    createdAt: new Date().toISOString(),
-    updatedAt: new Date().toISOString(),
-  });
+  const [loading, setLoading] = useState<boolean>(true);
+  const [editing, setEditing] = useState<boolean>(false);
+  const [profile, setProfile] = useState<Partial<UserProfile>>({});
+  const [error, setError] = useState<string | null>(null);
 
-  // Memoize the fetch function to prevent unnecessary recreations
-  const fetchUserProfile = useCallback(async () => {
+  const fetchUserProfile = useCallback(async (forceRefresh = false) => {
     if (!user) {
       router.push('/login');
       return;
     }
 
+    const cacheKey = `profile_${user.uid}`;
+    const now = Date.now();
+    
+    // Return cached data if it exists and is not expired
+    if (!forceRefresh && profileCache[cacheKey] && (now - profileCache[cacheKey].timestamp < CACHE_DURATION)) {
+      setProfile(profileCache[cacheKey].data);
+      setLoading(false);
+      return;
+    }
+
     try {
-      // Add a small delay to show loading state (remove in production if not needed)
-      const [userDoc] = await Promise.all([
-        getDoc(doc(db, 'users', user.uid)),
-        new Promise(resolve => setTimeout(resolve, 300)) // Simulate loading
-      ]);
+      setLoading(true);
+      setError(null);
+      
+      const userDoc = await getDoc(doc(db, 'users', user.uid));
 
       if (userDoc.exists()) {
         const userData = userDoc.data();
-        setProfile(prev => ({
-          ...prev,
+        const profileData = {
           displayName: userData.displayName || user.displayName || user.email?.split('@')[0] || 'User',
-          ...userData.profile
-        }));
+          ...(userData.profile || {})
+        };
+        
+        // Update cache
+        profileCache[cacheKey] = {
+          data: profileData,
+          timestamp: now
+        };
+        
+        setProfile(profileData);
       }
-    } catch (error) {
-      console.error('Error fetching user profile:', error);
+    } catch (err) {
+      console.error('Error fetching user profile:', err);
+      setError('Failed to load profile. Please try again.');
     } finally {
       setLoading(false);
     }
   }, [user, router]);
 
-  // Fetch data on component mount
+  // Initial data fetch
   useEffect(() => {
     fetchUserProfile();
   }, [fetchUserProfile]);
@@ -87,36 +97,52 @@ export default function ProfilePage() {
     if (!user) return;
 
     try {
-      // Show loading state
       setLoading(true);
+      setError(null);
       
-      const updatedProfile = {
-        ...profile,
-        updatedAt: new Date().toISOString()
-      };
-
       // Create a clean profile object without the fields that should be top-level
-      const { displayName, ...profileData } = updatedProfile;
-
-      // Save to Firestore
-      await updateDoc(doc(db, 'users', user.uid), {
-        displayName: displayName,
-        profile: profileData,
-        updatedAt: updatedProfile.updatedAt
-      });
-
-      // Update local state
-      setProfile(prev => ({
-        ...prev,
-        ...updatedProfile
-      }));
+      const { displayName, ...profileFields } = profile;
       
-      // Show success message and return to view mode
+      const userRef = doc(db, 'users', user.uid);
+      const userDoc = await getDoc(userRef);
+      
+      const updateData = {
+        email: user.email || '',
+        displayName: displayName || user.displayName || user.email?.split('@')[0] || 'User',
+        photoURL: user.photoURL || '',
+        createdAt: userDoc.exists() ? undefined : serverTimestamp(),
+        updatedAt: serverTimestamp(),
+        profile: {
+          ...(userDoc.exists() ? userDoc.data()?.profile || {} : {}),
+          ...profileFields,
+          updatedAt: new Date().toISOString()
+        }
+      };
+      
+      // Use setDoc with merge: true to create the document if it doesn't exist
+      await setDoc(userRef, updateData, { merge: true });
+      
+      // Prepare the updated profile data for local state
+      const updatedProfile = {
+        displayName: updateData.displayName,
+        ...updateData.profile
+      };
+      
+      // Update cache
+      const cacheKey = `profile_${user.uid}`;
+      const cacheData = {
+        data: updatedProfile,
+        timestamp: Date.now()
+      };
+      profileCache[cacheKey] = cacheData;
+      
+      // Update local state
+      setProfile(updatedProfile);
       setEditing(false);
       
-      // Optional: Show a toast notification instead of alert
+      // Show success message
       const toast = document.createElement('div');
-      toast.className = 'fixed top-4 right-4 bg-green-500 text-white px-4 py-2 rounded-lg shadow-lg z-50 animate-fade-in-out';
+      toast.className = 'fixed top-4 right-4 bg-green-500 text-white px-4 py-2 rounded-lg shadow-lg z-50';
       toast.textContent = 'Profile updated successfully!';
       document.body.appendChild(toast);
       
@@ -126,16 +152,15 @@ export default function ProfilePage() {
         setTimeout(() => toast.remove(), 500);
       }, 3000);
       
-      // Log feature usage (you can replace this with your analytics service)
-      console.log('Profile updated:', updatedProfile);
-      
-    } catch (error) {
-      console.error('Error updating profile:', error);
+    } catch (err) {
+      console.error('Error updating profile:', err);
+      const errorMessage = err instanceof Error ? err.message : 'Failed to update profile';
+      setError(errorMessage);
       
       // Show error message
       const errorToast = document.createElement('div');
-      errorToast.className = 'fixed top-4 right-4 bg-red-500 text-white px-4 py-2 rounded-lg shadow-lg z-50 animate-fade-in-out';
-      errorToast.textContent = 'Failed to update profile. Please try again.';
+      errorToast.className = 'fixed top-4 right-4 bg-red-500 text-white px-4 py-2 rounded-lg shadow-lg z-50';
+      errorToast.textContent = errorMessage;
       document.body.appendChild(errorToast);
       
       // Remove error toast after 5 seconds
@@ -149,8 +174,8 @@ export default function ProfilePage() {
     }
   };
 
-  // Loading skeleton
-  if (loading) {
+  // Show loading state
+  if (loading && Object.keys(profile).length === 0) {
     return (
       <div className="space-y-8 animate-pulse">
         {/* Profile Header Skeleton */}
