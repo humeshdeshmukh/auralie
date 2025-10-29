@@ -1,13 +1,14 @@
 'use client';
 
-import { useState, useEffect, useRef } from 'react';
-import { CycleEntry } from '../types';
+import { useState, useEffect, useCallback } from 'react';
+import { CycleEntry, CyclePrediction } from '../types';
 
 interface CycleFormProps {
   initialData?: CycleEntry;
-  onSubmit: (data: Omit<CycleEntry, 'id' | 'userId' | 'createdAt' | 'updatedAt'>) => void;
+  onSubmit: (data: Omit<CycleEntry, 'id' | 'userId' | 'createdAt' | 'updatedAt' | 'imageUrl'>) => void;
   onCancel: () => void;
   isLoading: boolean;
+  entries?: CycleEntry[];
 }
 
 const FLOW_LEVELS = [
@@ -22,72 +23,91 @@ const COMMON_SYMPTOMS = [
   'Breast tenderness', 'Acne', 'Back pain', 'Nausea', 'Food cravings'
 ];
 
-export default function CycleForm({ initialData, onSubmit, onCancel, isLoading }: CycleFormProps) {
-  const [formData, setFormData] = useState<Omit<CycleEntry, 'id' | 'userId' | 'createdAt' | 'updatedAt'>>({
-    startDate: '',
-    endDate: '',
-    flowLevel: 'medium',
-    symptoms: [],
-    notes: '',
-    mood: '',
-    temperature: undefined,
-    weight: undefined,
-    isPredicted: false,
-  });
-
+export default function CycleForm({ initialData, onSubmit, onCancel, isLoading, entries = [] }: CycleFormProps) {
+  const [isPredicting, setIsPredicting] = useState(false);
+  const [prediction, setPrediction] = useState<CyclePrediction | null>(null);
   const [symptomInput, setSymptomInput] = useState('');
   const [showSymptomSuggestions, setShowSymptomSuggestions] = useState(false);
   const [filteredSymptoms, setFilteredSymptoms] = useState<string[]>([]);
-
-  // Use a ref to track initial data to prevent unnecessary effect re-runs
-  const initialDataRef = useRef(initialData);
   
-  // Initialize form with initialData if provided
-  useEffect(() => {
-    const initializeForm = () => {
-      const data = initialDataRef.current;
-      if (data) {
-        const { id, userId, createdAt, updatedAt, ...formData } = data;
-        return {
-          ...formData,
-          symptoms: formData.symptoms || [],
-          isPredicted: formData.isPredicted || false
-        };
-      }
+  // Initialize form data with proper type safety and default values
+  const [formData, setFormData] = useState<Omit<CycleEntry, 'id' | 'userId' | 'createdAt' | 'updatedAt' | 'imageUrl'>>(() => {
+    // If we have initialData, use it
+    if (initialData) {
       return {
-        startDate: new Date().toISOString().split('T')[0],
-        endDate: undefined,
-        flowLevel: 'medium' as const,
-        symptoms: [],
-        notes: '',
-        mood: undefined,
-        temperature: undefined,
-        weight: undefined,
-        isPredicted: false
+        startDate: initialData.startDate,
+        endDate: initialData.endDate || undefined,
+        flowLevel: initialData.flowLevel || 'medium',
+        symptoms: Array.isArray(initialData.symptoms) ? initialData.symptoms : [],
+        notes: initialData.notes || '',
+        mood: initialData.mood || undefined,
+        temperature: initialData.temperature || undefined,
+        weight: initialData.weight || undefined,
+        isPredicted: initialData.isPredicted || false,
+        ...(initialData.predictedData ? {
+          predictedData: {
+            analysis: initialData.predictedData.analysis || '',
+            healthTips: initialData.predictedData.healthTips || []
+          }
+        } : {})
       };
+    }
+    // Otherwise, use default values
+    return {
+      startDate: new Date().toISOString().split('T')[0],
+      endDate: undefined,
+      flowLevel: 'medium',
+      symptoms: [],
+      notes: '',
+      mood: undefined,
+      temperature: undefined,
+      weight: undefined,
+      isPredicted: false
     };
-    
-    setFormData(initializeForm());
-  }, []); // Empty dependency array since we're using ref
+  });
+
+  // Update form data when initialData changes
+  useEffect(() => {
+    if (initialData) {
+      setFormData(prev => ({
+        ...prev,
+        startDate: initialData.startDate,
+        endDate: initialData.endDate || undefined,
+        flowLevel: initialData.flowLevel || 'medium',
+        symptoms: initialData.symptoms || [],
+        notes: initialData.notes || '',
+        mood: initialData.mood || undefined,
+        temperature: initialData.temperature || undefined,
+        weight: initialData.weight || undefined,
+        isPredicted: initialData.isPredicted || false,
+        ...(initialData.predictedData ? {
+          predictedData: {
+            analysis: initialData.predictedData.analysis || '',
+            healthTips: initialData.predictedData.healthTips || []
+          }
+        } : {})
+      }));
+    }
+  }, [initialData]);
 
   // Filter symptoms based on input
   useEffect(() => {
-    const filterSymptoms = () => {
-      if (symptomInput.trim() === '') {
-        return COMMON_SYMPTOMS.filter(s => !formData.symptoms.includes(s));
-      }
-      return COMMON_SYMPTOMS.filter(
-        s => s.toLowerCase().includes(symptomInput.toLowerCase()) && 
-             !formData.symptoms.includes(s)
+    if (symptomInput.trim() === '') {
+      setFilteredSymptoms(COMMON_SYMPTOMS.filter(s => 
+        !formData.symptoms.some(addedSymptom => 
+          addedSymptom.toLowerCase() === s.toLowerCase()
+        )
+      ));
+    } else {
+      setFilteredSymptoms(
+        COMMON_SYMPTOMS.filter(s => 
+          s.toLowerCase().includes(symptomInput.toLowerCase()) &&
+          !formData.symptoms.some(addedSymptom => 
+            addedSymptom.toLowerCase() === s.toLowerCase()
+          )
+        )
       );
-    };
-    
-    // Use requestAnimationFrame to defer state update
-    const rafId = requestAnimationFrame(() => {
-      setFilteredSymptoms(filterSymptoms());
-    });
-    
-    return () => cancelAnimationFrame(rafId);
+    }
   }, [symptomInput, formData.symptoms]);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
@@ -95,7 +115,7 @@ export default function CycleForm({ initialData, onSubmit, onCancel, isLoading }
     
     setFormData(prev => ({
       ...prev,
-      [name]: type === 'number' && value ? parseFloat(value) : value,
+      [name]: type === 'number' && value ? parseFloat(value) : value || undefined,
     }));
   };
 
@@ -108,33 +128,65 @@ export default function CycleForm({ initialData, onSubmit, onCancel, isLoading }
   };
 
   const handleAddSymptom = (symptom: string) => {
-    if (symptom.trim() && !formData.symptoms.includes(symptom)) {
+    const trimmedSymptom = symptom.trim();
+    if (trimmedSymptom && !formData.symptoms.some(s => s.toLowerCase() === trimmedSymptom.toLowerCase())) {
       setFormData(prev => ({
         ...prev,
-        symptoms: [...prev.symptoms, symptom],
+        symptoms: [...(prev.symptoms || []), trimmedSymptom],
       }));
       setSymptomInput('');
       setShowSymptomSuggestions(false);
     }
   };
 
+  const handleSymptomKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      if (symptomInput.trim()) {
+        handleAddSymptom(symptomInput);
+      }
+    }
+  };
+
   const handleRemoveSymptom = (symptomToRemove: string) => {
     setFormData(prev => ({
       ...prev,
-      symptoms: prev.symptoms.filter(s => s !== symptomToRemove),
+      symptoms: (prev.symptoms || []).filter(s => s !== symptomToRemove),
     }));
   };
+
+
+
+
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     
-    // If end date is not set, set it to start date
-    const entryData = {
-      ...formData,
+    // Prepare the data for submission
+    const submissionData = {
+      startDate: formData.startDate,
       endDate: formData.endDate || formData.startDate,
+      flowLevel: formData.flowLevel,
+      symptoms: formData.symptoms || [],
+      notes: formData.notes || '',
+      mood: formData.mood || undefined,
+      temperature: formData.temperature,
+      weight: formData.weight,
+      isPredicted: formData.isPredicted || false,
+      ...(prediction ? {
+        predictedData: {
+          analysis: prediction.analysis || '',
+          healthTips: prediction.healthTips || []
+        }
+      } : {})
     };
     
-    onSubmit(entryData);
+    // Clean up the data before submission
+    const cleanData = Object.fromEntries(
+      Object.entries(submissionData).filter(([_, v]) => v !== undefined && v !== '')
+    ) as Omit<CycleEntry, 'id' | 'userId' | 'createdAt' | 'updatedAt' | 'imageUrl'>;
+    
+    onSubmit(cleanData);
   };
 
   return (
@@ -164,7 +216,7 @@ export default function CycleForm({ initialData, onSubmit, onCancel, isLoading }
             id="endDate"
             name="endDate"
             className="block w-full rounded-md border-gray-300 shadow-sm focus:border-pink-500 focus:ring-pink-500 sm:text-sm bg-white text-gray-900"
-            value={formData.endDate}
+            value={formData.endDate || ''}
             onChange={handleChange}
             min={formData.startDate}
           />
@@ -198,18 +250,31 @@ export default function CycleForm({ initialData, onSubmit, onCancel, isLoading }
           Symptoms
         </label>
         <div className="relative">
-          <input
-            type="text"
-            value={symptomInput}
-            onChange={(e) => {
-              setSymptomInput(e.target.value);
-              setShowSymptomSuggestions(true);
-            }}
-            onFocus={() => setShowSymptomSuggestions(true)}
-            onBlur={() => setTimeout(() => setShowSymptomSuggestions(false), 200)}
-            placeholder="Add symptoms..."
-            className="w-full rounded-md border-gray-300 shadow-sm focus:border-pink-500 focus:ring-pink-500 sm:text-sm bg-white text-gray-900"
-          />
+          <div className="relative">
+            <input
+              type="text"
+              value={symptomInput}
+              onChange={(e) => {
+                const value = e.target.value;
+                setSymptomInput(value);
+                setShowSymptomSuggestions(!!value);
+              }}
+              onKeyDown={handleSymptomKeyDown}
+              onFocus={() => symptomInput && setShowSymptomSuggestions(true)}
+              onBlur={() => setTimeout(() => setShowSymptomSuggestions(false), 200)}
+              placeholder="Type and press Enter or select from suggestions..."
+              className="w-full rounded-md border-gray-300 shadow-sm focus:border-pink-500 focus:ring-pink-500 sm:text-sm bg-white text-gray-900 pr-20"
+            />
+            {symptomInput && (
+              <button
+                type="button"
+                onClick={() => handleAddSymptom(symptomInput)}
+                className="absolute right-2 top-1/2 transform -translate-y-1/2 text-xs bg-pink-600 text-white px-3 py-1 rounded hover:bg-pink-700 transition-colors"
+              >
+                Add
+              </button>
+            )}
+          </div>
           
           {showSymptomSuggestions && filteredSymptoms.length > 0 && (
             <div className="absolute z-10 mt-1 w-full bg-white border border-gray-300 rounded-md shadow-lg">
@@ -298,34 +363,26 @@ export default function CycleForm({ initialData, onSubmit, onCancel, isLoading }
         </div>
       </div>
 
-      <div className="space-y-2">
-        <label htmlFor="notes" className="block text-sm font-medium text-gray-700">
-          Notes
-        </label>
-        <textarea
-          id="notes"
-          name="notes"
-          rows={3}
-          className="block w-full rounded-md border-gray-300 shadow-sm focus:border-pink-500 focus:ring-pink-500 sm:text-sm bg-white text-gray-900"
-          value={formData.notes || ''}
-          onChange={handleChange}
-          placeholder="Any additional notes about your cycle..."
-        />
+      <div className="space-y-4">
+
+        {/* Notes */}
+        <div className="space-y-2">
+          <label htmlFor="notes" className="block text-sm font-medium text-gray-700">
+            Notes
+          </label>
+          <textarea
+            id="notes"
+            name="notes"
+            rows={3}
+            className="block w-full rounded-md border-gray-300 shadow-sm focus:border-pink-500 focus:ring-pink-500 sm:text-sm bg-white text-gray-900"
+            value={formData.notes || ''}
+            onChange={handleChange}
+            placeholder="Any additional notes about your cycle..."
+          />
+        </div>
+
       </div>
 
-      <div className="flex items-center">
-        <input
-          id="isPredicted"
-          name="isPredicted"
-          type="checkbox"
-          checked={formData.isPredicted || false}
-          onChange={handleCheckboxChange}
-          className="h-4 w-4 text-pink-600 focus:ring-pink-500 border-gray-300 rounded"
-        />
-        <label htmlFor="isPredicted" className="ml-2 block text-sm text-gray-700">
-          Mark as predicted period
-        </label>
-      </div>
 
       <div className="flex justify-end space-x-3 pt-4">
         <button

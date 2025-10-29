@@ -10,6 +10,11 @@ export interface CycleEntry {
   temperature?: number;
   weight?: number;
   isPredicted?: boolean;
+  imageUrl?: string;
+  predictedData?: {
+    analysis: string;
+    healthTips: string[];
+  };
   createdAt: string;
   updatedAt: string;
 }
@@ -23,13 +28,25 @@ export interface CyclePrediction {
   };
   ovulationDate: string;
   confidence: 'low' | 'medium' | 'high';
+  analysis?: string;
+  healthTips?: string[];
 }
 
 export interface CycleStats {
   averageCycleLength: number;
   averagePeriodLength: number;
-  lastPeriodStart: string;  // ISO date string
-  nextPeriodStart: string;  // ISO date string
   cycleVariability: number;
-  periodLogs: CycleEntry[];
+  lastPeriodStart: string | null;
+  nextPeriodStart: string | null;
+  nextPeriodEnd: string | null;
+  fertileWindow: { start: string; end: string } | null;
+  ovulationDate: string | null;
+  confidence: 'low' | 'medium' | 'high';
+  cycleHistory: Array<{
+    startDate: string;
+    endDate?: string;
+    length: number;
+    periodLength?: number;
+  }>;
+  periodLogs?: CycleEntry[]; // Keeping for backward compatibility
 }

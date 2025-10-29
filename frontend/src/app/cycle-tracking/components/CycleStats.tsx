@@ -75,28 +75,49 @@ export default function CycleStats({ stats, predictions, onAddEntry }: CycleStat
 
   return (
     <div className="space-y-6">
-      <div className="bg-white p-6 rounded-lg shadow-md">
-        <h2 className="text-xl font-semibold text-gray-800 mb-4">Cycle Overview</h2>
+      <div className="bg-white p-6 rounded-lg shadow-md border border-gray-100">
+        <h2 className="text-2xl font-bold text-pink-700 mb-6 pb-2 border-b border-gray-200">Cycle Overview</h2>
         
-        <div className="space-y-4">
-          <div className="flex justify-between items-center">
-            <span className="text-gray-600">Average Cycle Length</span>
-            <span className="font-medium">{stats.averageCycleLength} days</span>
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+          {/* Average Cycle Length */}
+          <div className="bg-pink-50 p-4 rounded-lg border border-pink-100">
+            <div className="text-sm font-medium text-pink-700 mb-1">Average Cycle</div>
+            <div className="flex items-end justify-between">
+              <span className="text-3xl font-bold text-pink-800">{stats.averageCycleLength || '--'}</span>
+              <span className="text-gray-500 text-sm">days</span>
+            </div>
+            <div className="mt-2 text-xs text-gray-500">Typical cycle duration</div>
           </div>
           
-          <div className="flex justify-between items-center">
-            <span className="text-gray-600">Average Period Length</span>
-            <span className="font-medium">{stats.averagePeriodLength} days</span>
+          {/* Average Period Length */}
+          <div className="bg-blue-50 p-4 rounded-lg border border-blue-100">
+            <div className="text-sm font-medium text-blue-700 mb-1">Period Length</div>
+            <div className="flex items-end justify-between">
+              <span className="text-3xl font-bold text-blue-800">{stats.averagePeriodLength || '--'}</span>
+              <span className="text-gray-500 text-sm">days</span>
+            </div>
+            <div className="mt-2 text-xs text-gray-500">Average period duration</div>
           </div>
           
-          <div className="flex justify-between items-center">
-            <span className="text-gray-600">Cycle Variability</span>
-            <span className={`font-medium ${
-              stats.cycleVariability < 3 ? 'text-green-600' : 
-              stats.cycleVariability < 7 ? 'text-yellow-600' : 'text-red-600'
-            }`}>
-              {stats.cycleVariability} days
-            </span>
+          {/* Cycle Variability */}
+          <div className={`p-4 rounded-lg border ${
+            stats.cycleVariability < 3 ? 'bg-green-50 border-green-100' : 
+            stats.cycleVariability < 7 ? 'bg-yellow-50 border-yellow-100' : 'bg-red-50 border-red-100'
+          }`}>
+            <div className="flex justify-between items-center">
+              <span className="text-sm font-medium text-gray-700">Cycle Variability</span>
+              <span className={`text-xs px-2 py-1 rounded-full ${
+                stats.cycleVariability < 3 ? 'bg-green-100 text-green-800' : 
+                stats.cycleVariability < 7 ? 'bg-yellow-100 text-yellow-800' : 'bg-red-100 text-red-800'
+              }`}>
+                {stats.cycleVariability < 3 ? 'Low' : stats.cycleVariability < 7 ? 'Moderate' : 'High'}
+              </span>
+            </div>
+            <div className="flex items-end justify-between mt-2">
+              <span className="text-3xl font-bold">{stats.cycleVariability || '--'}</span>
+              <span className="text-gray-500 text-sm">days</span>
+            </div>
+            <div className="mt-1 text-xs text-gray-500">Lower is more regular</div>
           </div>
         </div>
       </div>
