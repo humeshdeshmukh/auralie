@@ -212,7 +212,7 @@ export default function HealthEntryForm({
                     type="date"
                     id="date"
                     {...register('date', { required: 'Date is required' })}
-                    className="block w-full rounded-md border-gray-300 shadow-sm focus:border-pink-500 focus:ring-pink-500 text-sm h-10 px-3 text-gray-900 bg-white placeholder-gray-400"
+                    className="mt-1 block w-full rounded-xl border-2 border-purple-200 bg-white/80 py-3 px-4 text-base font-medium text-gray-800 focus:border-purple-500 focus:outline-none focus:ring-2 focus:ring-purple-200 transition-all duration-200 hover:border-purple-300"
                   />
                   {errors.date && (
                     <p className="mt-1 text-sm text-red-600">{errors.date.message}</p>
@@ -226,8 +226,8 @@ export default function HealthEntryForm({
                   </label>
                   <select
                     id="mood"
-                    {...register('mood')}
-                    className="block w-full rounded-md border-gray-300 shadow-sm focus:border-pink-500 focus:ring-pink-500 text-sm h-10 px-3 text-gray-900 bg-white placeholder-gray-400"
+                    {...register('mood', { required: 'Mood is required' })}
+                    className="mt-1 block w-full rounded-xl border-2 border-purple-200 bg-white/80 py-3 pl-4 pr-10 text-base font-medium text-gray-800 focus:border-purple-500 focus:outline-none focus:ring-2 focus:ring-purple-200 transition-all duration-200 hover:border-purple-300"
                   >
                     <option value="1">😢 Very Poor</option>
                     <option value="2">🙁 Poor</option>
@@ -244,8 +244,8 @@ export default function HealthEntryForm({
                   </label>
                   <select
                     id="energyLevel"
-                    {...register('energyLevel')}
-                    className="block w-full rounded-md border-gray-300 shadow-sm focus:border-pink-500 focus:ring-pink-500 text-sm h-10 px-3 text-gray-900 bg-white placeholder-gray-400"
+                    {...register('energyLevel', { required: 'Energy Level is required' })}
+                    className="mt-1 block w-full rounded-xl border-2 border-purple-200 bg-white/80 py-3 pl-4 pr-10 text-base font-medium text-gray-800 focus:border-purple-500 focus:outline-none focus:ring-2 focus:ring-purple-200 transition-all duration-200 hover:border-purple-300"
                   >
                     <option value="1">😴 Very Low</option>
                     <option value="2">😪 Low</option>
@@ -283,12 +283,16 @@ export default function HealthEntryForm({
                     step="0.1"
                     min="0"
                     required
-                    {...register('metrics.weight', { required: 'Weight is required' })}
-                    className="block w-full rounded-md border border-gray-300 shadow-sm focus:border-pink-500 focus:ring-1 focus:ring-pink-500 text-sm h-10 px-3 text-gray-900 bg-white placeholder-gray-400 transition duration-150 ease-in-out"
-                    placeholder="e.g. 68.5"
+                    {...register('metrics.weight', {
+                      required: 'Weight is required',
+                      min: { value: 20, message: 'Weight must be at least 20kg' },
+                      max: { value: 300, message: 'Weight must be less than 300kg' }
+                    })}
+                    className="block w-full rounded-xl border-2 border-purple-200 bg-white/80 shadow-sm focus:border-purple-500 focus:ring-2 focus:ring-purple-200 text-base h-12 px-4 text-gray-800 placeholder-purple-300 transition-all duration-200 ease-in-out hover:border-purple-300"
+                    placeholder="Enter weight in kg"
                   />
-                  <div className="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none">
-                    <span className="text-gray-500 text-sm">kg</span>
+                  <div className="absolute inset-y-0 right-0 flex items-center pr-4 pointer-events-none">
+                    <span className="text-purple-400 font-medium">kg</span>
                   </div>
                 </div>
                 {errors.metrics?.weight && (
@@ -308,16 +312,16 @@ export default function HealthEntryForm({
                     step="0.1"
                     min="0"
                     required
-                    {...register('metrics.height', { 
+                    {...register('metrics.height', {
                       required: 'Height is required',
                       min: { value: 50, message: 'Height must be at least 50cm' },
                       max: { value: 250, message: 'Height cannot exceed 250cm' }
                     })}
-                    className="block w-full rounded-md border border-gray-300 shadow-sm focus:border-pink-500 focus:ring-1 focus:ring-pink-500 text-sm h-10 px-3 text-gray-900 bg-white placeholder-gray-400 transition duration-150 ease-in-out"
-                    placeholder="e.g. 170"
+                    className="block w-full rounded-xl border-2 border-purple-200 bg-white/80 shadow-sm focus:border-purple-500 focus:ring-2 focus:ring-purple-200 text-base h-12 px-4 text-gray-800 placeholder-purple-300 transition-all duration-200 ease-in-out hover:border-purple-300"
+                    placeholder="Enter height in cm"
                   />
-                  <div className="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none">
-                    <span className="text-gray-500 text-sm">cm</span>
+                  <div className="absolute inset-y-0 right-0 flex items-center pr-4 pointer-events-none">
+                    <span className="text-purple-400 font-medium">cm</span>
                   </div>
                 </div>
                 {errors.metrics?.height && (
@@ -334,19 +338,19 @@ export default function HealthEntryForm({
                   <input
                     type="number"
                     {...register('metrics.bloodPressureSystolic')}
-                    className="block w-1/2 rounded-l-md border border-r-0 border-gray-300 focus:border-pink-500 focus:ring-1 focus:ring-pink-500 text-sm h-10 px-3 text-gray-900 bg-white placeholder-gray-400 transition duration-150 ease-in-out"
+                    className="block w-1/2 rounded-l-md border border-r-0 border-purple-200 focus:border-purple-500 focus:ring-2 focus:ring-purple-200 text-base h-12 px-4 text-gray-800 placeholder-purple-300 transition-all duration-200 ease-in-out hover:border-purple-300"
                     placeholder="120"
                   />
-                  <span className="inline-flex items-center px-2 border-t border-b border-gray-300 bg-gray-50 text-gray-500 text-sm">
+                  <span className="inline-flex items-center px-2 border-t border-b border-purple-200 bg-white/80 text-gray-500 text-base">
                     /
                   </span>
                   <input
                     type="number"
                     {...register('metrics.bloodPressureDiastolic')}
-                    className="block w-1/2 rounded-r-md border border-l-0 border-gray-300 focus:border-pink-500 focus:ring-1 focus:ring-pink-500 text-sm h-10 px-3 text-gray-900 bg-white placeholder-gray-400 transition duration-150 ease-in-out"
+                    className="block w-1/2 rounded-r-md border border-l-0 border-purple-200 focus:border-purple-500 focus:ring-2 focus:ring-purple-200 text-base h-12 px-4 text-gray-800 placeholder-purple-300 transition-all duration-200 ease-in-out hover:border-purple-300"
                   />
                   <div className="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none">
-                    <span className="text-gray-500 text-sm">mmHg</span>
+                    <span className="text-gray-500 text-base">mmHg</span>
                   </div>
                 </div>
               </div>
@@ -361,11 +365,11 @@ export default function HealthEntryForm({
                     type="number"
                     id="heartRate"
                     {...register('metrics.heartRate')}
-                    className="block w-full rounded-md border border-gray-300 shadow-sm focus:border-pink-500 focus:ring-1 focus:ring-pink-500 text-sm h-10 px-3 text-gray-900 bg-white placeholder-gray-400 transition duration-150 ease-in-out"
+                    className="block w-full rounded-xl border-2 border-purple-200 bg-white/80 shadow-sm focus:border-purple-500 focus:ring-2 focus:ring-purple-200 text-base h-12 px-4 text-gray-800 placeholder-purple-300 transition-all duration-200 ease-in-out hover:border-purple-300"
                     placeholder="72"
                   />
                   <div className="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none">
-                    <span className="text-gray-500 text-sm">bpm</span>
+                    <span className="text-gray-500 text-base">bpm</span>
                   </div>
                 </div>
               </div>
@@ -380,7 +384,7 @@ export default function HealthEntryForm({
                     type="number"
                     step="0.1"
                     {...register('metrics.bmi')}
-                    className={`block w-full rounded-md border ${!watch('metrics.weight') || !watch('metrics.height') ? 'border-yellow-300 bg-yellow-50' : 'border-gray-300 bg-gray-50'} shadow-sm text-sm h-10 px-3 text-gray-900 transition duration-150 ease-in-out`}
+                    className={`block w-full rounded-xl border-2 border-purple-200 bg-white/80 shadow-sm text-base h-12 px-4 text-gray-800 placeholder-purple-300 transition-all duration-200 ease-in-out ${!watch('metrics.weight') || !watch('metrics.height') ? 'bg-yellow-50' : ''}`}
                     placeholder="Auto-calculated"
                     readOnly
                   />
@@ -415,9 +419,9 @@ export default function HealthEntryForm({
               <div>
                 <span className="font-medium">{symptom.name}</span>
                 {symptom.severity && (
-                  <span className="ml-2 text-sm text-gray-500">
+                  <div className="text-sm font-medium mt-2 px-1">
                     Severity: {symptom.severity}/5
-                  </span>
+                  </div>
                 )}
                 {symptom.notes && (
                   <p className="text-sm text-gray-500 mt-1">{symptom.notes}</p>
@@ -447,7 +451,7 @@ export default function HealthEntryForm({
                   id="symptom"
                   value={symptomInput}
                   onChange={(e) => setSymptomInput(e.target.value)}
-                  className="block w-full rounded-md border-gray-300 shadow-sm focus:border-pink-500 focus:ring-pink-500 sm:text-sm"
+                  className="block w-full rounded-xl border-2 border-purple-200 bg-white/80 py-3 px-4 text-base font-medium text-gray-800 focus:border-purple-500 focus:outline-none focus:ring-2 focus:ring-purple-200 transition-all duration-200 hover:border-purple-300"
                   placeholder="e.g. Headache"
                 />
               </div>
@@ -462,7 +466,7 @@ export default function HealthEntryForm({
                   id="symptomSeverity"
                   value={symptomSeverity}
                   onChange={(e) => setSymptomSeverity(e.target.value)}
-                  className="block w-full rounded-md border-gray-300 shadow-sm focus:border-pink-500 focus:ring-pink-500 sm:text-sm"
+                  className="block w-full rounded-xl border-2 border-purple-200 bg-white/80 py-3 pl-4 pr-10 text-base font-medium text-gray-800 focus:border-purple-500 focus:outline-none focus:ring-2 focus:ring-purple-200 transition-all duration-200 hover:border-purple-300"
                 >
                   <option value="1">1 - Very Mild</option>
                   <option value="2">2 - Mild</option>
@@ -483,13 +487,13 @@ export default function HealthEntryForm({
                   id="symptomNotes"
                   value={symptomNotes}
                   onChange={(e) => setSymptomNotes(e.target.value)}
-                  className="block w-full rounded-md border-gray-300 shadow-sm focus:border-pink-500 focus:ring-pink-500 sm:text-sm"
+                  className="block w-full rounded-xl border-2 border-purple-200 bg-white/80 py-3 px-4 text-base font-medium text-gray-800 focus:border-purple-500 focus:outline-none focus:ring-2 focus:ring-purple-200 transition-all duration-200 hover:border-purple-300"
                   placeholder="e.g. Started in the morning"
                 />
                 <button
                   type="button"
                   onClick={addSymptom}
-                  className="ml-3 inline-flex items-center px-3 py-2 border border-transparent text-sm leading-4 font-medium rounded-md text-white bg-pink-600 hover:bg-pink-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-pink-500"
+                  className="ml-3 inline-flex items-center px-3 py-2 border border-transparent text-base font-medium rounded-md text-white bg-pink-600 hover:bg-pink-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-pink-500"
                 >
                   <PlusIcon className="h-4 w-4 mr-1" />
                   Add

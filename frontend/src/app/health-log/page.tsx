@@ -370,7 +370,7 @@ export default function HealthLogPage() {
               {activeTab === 'trends' && (
                 <div className="bg-white shadow overflow-hidden sm:rounded-lg p-6">
                   <h2 className="text-lg font-medium text-gray-900 mb-4">Health Trends</h2>
-                  <p className="text-gray-600">Coming soon! Track your health trends over time.</p>
+                  <HealthMetrics entries={entries} />
                 </div>
               )}
             </>
