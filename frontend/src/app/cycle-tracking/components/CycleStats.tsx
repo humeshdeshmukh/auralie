@@ -11,7 +11,7 @@ interface CycleStatsProps {
   entries: CycleEntry[];
 }
 
-export default function CycleStats({ stats, predictions, onAddEntry, onSelectEntry, entries = [] }: CycleStatsProps) {
+export default function CycleStats({ stats, predictions, onAddEntry }: CycleStatsProps) {
   const formatDate = (dateString: string | null | undefined) => {
     if (!dateString) return 'N/A';
     try {
@@ -23,22 +23,6 @@ export default function CycleStats({ stats, predictions, onAddEntry, onSelectEnt
     }
   };
 
-  const isDateInRange = (date: Date, start: string, end: string) => {
-    try {
-      const startDate = new Date(start);
-      const endDate = new Date(end);
-      
-      if (isNaN(startDate.getTime()) || isNaN(endDate.getTime())) {
-        console.error('Invalid date range:', { start, end });
-        return false;
-      }
-      
-      return date >= startDate && date <= endDate;
-    } catch (error) {
-      console.error('Error checking date range:', error);
-      return false;
-    }
-  };
 
   const getDaysAway = (dateString: string | null | undefined): string | null => {
     if (!dateString) return null;
@@ -61,11 +45,16 @@ export default function CycleStats({ stats, predictions, onAddEntry, onSelectEnt
     if (!predictions?.fertileWindow) return 'Unknown';
     
     const today = new Date();
-    const fertileStart = parseISO(predictions.fertileWindow.start);
-    const fertileEnd = parseISO(predictions.fertileWindow.end);
+    const fertileStart = new Date(predictions.fertileWindow.start);
+    const fertileEnd = new Date(predictions.fertileWindow.end);
+    
+    if (isNaN(fertileStart.getTime()) || isNaN(fertileEnd.getTime())) {
+      return 'Unknown';
+    }
     
     if (today < fertileStart) {
-      return `Not yet (in ${differenceInDays(fertileStart, today)} days)`;
+      const days = differenceInDays(fertileStart, today);
+      return `Not yet (in ${days} ${days === 1 ? 'day' : 'days'})`;
     }
     
     if (today > fertileEnd) {
@@ -182,10 +171,40 @@ export default function CycleStats({ stats, predictions, onAddEntry, onSelectEnt
       <div className="bg-white p-6 rounded-lg shadow-md">
         <h2 className="text-xl font-semibold text-gray-800 mb-4">Next Period</h2>
         
-        {predictions ? (
+        {predictions?.nextPeriodStart ? (
           <div className="space-y-4">
             <div className="bg-pink-50 border-l-4 border-pink-500 p-4 rounded-r">
-              <div className="flex items-center">
+              <div className="flex items-start justify-between">
+                <div>
+                  <p className="text-sm font-medium text-pink-800">Expected Start</p>
+                  <p className="text-2xl font-bold text-gray-900">
+                    {formatDate(predictions.nextPeriodStart)}
+                  </p>
+                  <p className="text-sm text-pink-600 mt-1">
+                    {getDaysAway(predictions.nextPeriodStart)}
+                  </p>
+                </div>
+                <div className="bg-pink-100 p-3 rounded-full">
+                  <svg className="w-6 h-6 text-pink-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                  </svg>
+                </div>
+              </div>
+              
+              {predictions.nextPeriodEnd && (
+                <div className="mt-4 pt-4 border-t border-pink-100">
+                  <p className="text-sm text-gray-600">
+                    Expected to last until {formatDate(predictions.nextPeriodEnd)}
+                  </p>
+                  <div className="w-full bg-gray-200 rounded-full h-2 mt-2">
+                    <div 
+                      className="bg-pink-500 h-2 rounded-full" 
+                      style={{ width: '100%' }}
+                    ></div>
+                  </div>
+                </div>
+              )}
+              <div className="flex items-start mt-4">
                 <div className="flex-shrink-0">
                   <svg className="h-5 w-5 text-pink-500" fill="currentColor" viewBox="0 0 20 20">
                     <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h2a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clipRule="evenodd" />
@@ -203,65 +222,31 @@ export default function CycleStats({ stats, predictions, onAddEntry, onSelectEnt
               </div>
             </div>
             
-            <div className="grid grid-cols-2 gap-4">
-              <div className="bg-gray-50 p-4 rounded-lg">
-                <p className="text-sm text-gray-500">Starts</p>
-                <p className="text-lg font-semibold">{formatDate(predictions.nextPeriodStart)}</p>
-                <p className="text-sm text-gray-500">{getDaysAway(predictions.nextPeriodStart)}</p>
-              </div>
-              <div className="bg-gray-50 p-4 rounded-lg">
-                <p className="text-sm text-gray-500">Ends</p>
-                <p className="text-lg font-semibold">{formatDate(predictions.nextPeriodEnd)}</p>
-                <p className="text-sm text-gray-500">{getDaysAway(predictions.nextPeriodEnd)}</p>
-              </div>
-            </div>
-            
             {predictions.fertileWindow && (
-              <div className="mt-4">
-                <p className="text-sm text-gray-600 mb-2">Fertile Window</p>
+              <div className="bg-blue-50 p-4 rounded-lg mt-4">
                 <div className="flex items-center">
-                  <div className="flex-1 bg-blue-50 rounded-lg p-3">
-                    <p className="text-sm font-medium">
-                      {formatDate(predictions.fertileWindow.start)} - {formatDate(predictions.fertileWindow.end)}
-                    </p>
-                    <p className="text-xs text-gray-500">
-                      {differenceInDays(parseISO(predictions.fertileWindow.end), parseISO(predictions.fertileWindow.start)) + 1} days
-                    </p>
-                  </div>
+                  <svg className="w-5 h-5 text-blue-600 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                  </svg>
+                  <p className="text-sm text-blue-700">
+                    Fertile window: {formatDate(predictions.fertileWindow.start)} - {formatDate(predictions.fertileWindow.end)}
+                  </p>
                 </div>
               </div>
             )}
           </div>
         ) : (
           <div className="text-center py-6">
-            <svg className="mx-auto h-12 w-12 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1} d="M9.172 16.172a4 4 0 015.656 0M9 10h.01M15 10h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-            </svg>
-            <h3 className="mt-2 text-sm font-medium text-gray-900">No predictions yet</h3>
-            <p className="mt-1 text-sm text-gray-500">
-              Track your cycle for a few months to get accurate predictions.
-            </p>
-            <div className="mt-6">
-              <button
-                type="button"
-                onClick={onAddEntry}
-                className="inline-flex items-center px-4 py-2 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-pink-600 hover:bg-pink-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-pink-500"
-              >
-                <svg className="-ml-1 mr-2 h-5 w-5" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
-                  <path fillRule="evenodd" d="M10 5a1 1 0 011 1v3h3a1 1 0 110 2h-3v3a1 1 0 11-2 0v-3H6a1 1 0 110-2h3V6a1 1 0 011-1z" clipRule="evenodd" />
-                </svg>
-                Add Period
-              </button>
-            </div>
+            <p className="text-gray-500">No prediction data available</p>
           </div>
         )}
       </div>
       
       {stats.lastPeriodStart && (
-        <div className="bg-white p-6 rounded-lg shadow-md">
+        <div className="bg-white p-6 rounded-lg shadow-md mt-6">
           <h2 className="text-xl font-semibold text-gray-800 mb-4">Last Period</h2>
-          <div className="flex justify-between items-center">
-            <div>
+          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+            <div className="flex-1">
               <p className="text-gray-900 font-medium">
                 {formatDate(stats.lastPeriodStart)}
               </p>
