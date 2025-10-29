@@ -2,9 +2,105 @@
 
 import { useState, useEffect } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
-import { CycleEntry } from './types';
+import { CycleEntry, CycleStats as CycleStatsType } from './types';
 import { getCycleEntries, saveCycleEntry, updateCycleEntry, deleteCycleEntry } from './services/cycleService';
-import { calculateCycleStats } from './services/predictionService';
+
+// Simple function to calculate basic cycle stats
+const calculateCycleStats = (entries: CycleEntry[]): CycleStatsType => {
+  if (entries.length === 0) {
+    return {
+      averageCycleLength: 28,
+      averagePeriodLength: 5,
+      cycleVariability: 0,
+      lastPeriodStart: null,
+      nextPeriodStart: null,
+      nextPeriodEnd: null,
+      fertileWindow: null,
+      ovulationDate: null,
+      confidence: 'low',
+      cycleHistory: []
+    };
+  }
+
+  // Sort entries by start date
+  const sortedEntries = [...entries].sort(
+    (a, b) => new Date(a.startDate).getTime() - new Date(b.startDate).getTime()
+  );
+
+  // Calculate average cycle length
+  let totalCycleDays = 0;
+  let cycleCount = 0;
+  
+  for (let i = 1; i < sortedEntries.length; i++) {
+    const prevDate = new Date(sortedEntries[i - 1].startDate);
+    const currDate = new Date(sortedEntries[i].startDate);
+    const diffTime = Math.abs(currDate.getTime() - prevDate.getTime());
+    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+    totalCycleDays += diffDays;
+    cycleCount++;
+  }
+
+  const averageCycleLength = cycleCount > 0 ? Math.round(totalCycleDays / cycleCount) : 28;
+
+  // Calculate average period length
+  let totalPeriodDays = 0;
+  let periodCount = 0;
+
+  for (const entry of sortedEntries) {
+    if (entry.endDate) {
+      const startDate = new Date(entry.startDate);
+      const endDate = new Date(entry.endDate);
+      const diffTime = Math.abs(endDate.getTime() - startDate.getTime());
+      const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24)) + 1;
+      totalPeriodDays += diffDays;
+      periodCount++;
+    }
+  }
+
+  const averagePeriodLength = periodCount > 0 ? Math.round(totalPeriodDays / periodCount) : 5;
+
+  // Simple cycle variability (standard deviation of cycle lengths)
+  let variance = 0;
+  if (cycleCount > 1) {
+    const mean = totalCycleDays / cycleCount;
+    let sumSquaredDiffs = 0;
+    
+    for (let i = 1; i < sortedEntries.length; i++) {
+      const prevDate = new Date(sortedEntries[i - 1].startDate);
+      const currDate = new Date(sortedEntries[i].startDate);
+      const diffTime = Math.abs(currDate.getTime() - prevDate.getTime());
+      const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+      sumSquaredDiffs += Math.pow(diffDays - mean, 2);
+    }
+    
+    variance = Math.sqrt(sumSquaredDiffs / cycleCount);
+  }
+
+  const cycleVariability = Math.round(variance * 10) / 10;
+  const lastEntry = sortedEntries[sortedEntries.length - 1];
+  const lastStartDate = new Date(lastEntry.startDate);
+  
+  // Estimate next period start (simple estimation)
+  const nextStartDate = new Date(lastStartDate);
+  nextStartDate.setDate(lastStartDate.getDate() + averageCycleLength);
+  
+  // Estimate next period end (simple estimation)
+  const nextEndDate = new Date(nextStartDate);
+  nextEndDate.setDate(nextStartDate.getDate() + (averagePeriodLength - 1));
+
+  return {
+    averageCycleLength,
+    averagePeriodLength,
+    cycleVariability,
+    lastPeriodStart: lastEntry.startDate,
+    nextPeriodStart: nextStartDate.toISOString(),
+    nextPeriodEnd: nextEndDate.toISOString(),
+    fertileWindow: null,
+    ovulationDate: null,
+    confidence: cycleVariability < 3 ? 'high' : cycleVariability < 7 ? 'medium' : 'low',
+    cycleHistory: []
+  };
+};
 
 // Components
 import CycleCalendar from './components/CycleCalendar';
