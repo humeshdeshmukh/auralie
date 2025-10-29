@@ -4,6 +4,7 @@ import { doc, updateDoc, serverTimestamp } from 'firebase/firestore';
 import { CycleEntry, CyclePrediction, CycleStats } from '../types';
 
 // Initialize the Google Generative AI
+// Initialize the Gemini client with API key
 const genAI = new GoogleGenerativeAI(process.env.NEXT_PUBLIC_GEMINI_API_KEY || '');
 
 /**
@@ -14,8 +15,16 @@ export const getCyclePredictions = async (
   userId?: string
 ): Promise<{ prediction: CyclePrediction; analysis: string; healthTips: string[] }> => {
   try {
-    // Using gemini-2.5-flash model as requested
-    const model = genAI.getGenerativeModel({ model: 'gemini-2.5-flash' });
+    // Using the latest Gemini 2.5 Flash model
+    const model = genAI.getGenerativeModel({ 
+      model: 'gemini-2.5-flash',
+      generationConfig: {
+        temperature: 0.7,
+        topP: 0.8,
+        topK: 40,
+        maxOutputTokens: 2048,
+      },
+    });
     
     // Prepare the prompt with cycle history
     // Sort entries by date (newest first)

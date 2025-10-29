@@ -177,7 +177,7 @@ export default function CycleTrackingPage() {
               <div>
                 <CycleStats 
                   stats={stats} 
-                  predictions={predictions}
+                  userId={user?.uid || ''}
                   onAddEntry={() => setShowForm(true)}
                 />
               </div>

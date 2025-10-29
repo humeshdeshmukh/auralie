@@ -1,20 +1,17 @@
+import { GoogleGenerativeAI } from '@google/generative-ai';
 import { CycleData } from '@/app/cycle-tracking/page';
 
-const GEMINI_API_KEY = process.env.NEXT_PUBLIC_GEMINI_API_KEY;
-const GEMINI_API_URL = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-pro:generateContent';
-
-interface GeminiResponse {
-  candidates: Array<{
-    content: {
-      parts: Array<{
-        text: string;
-      }>;
-    };
-  }>;
-}
+// Initialize the Google Generative AI client
+const genAI = new GoogleGenerativeAI(process.env.NEXT_PUBLIC_GEMINI_API_KEY || '');
 
 export const generateCycleInsights = async (cycles: CycleData[]): Promise<string> => {
   try {
+    if (!cycles || cycles.length === 0) {
+      return 'No cycle data provided for analysis.';
+    }
+
+    const model = genAI.getGenerativeModel({ model: 'gemini-pro' });
+    
     const prompt = `You are a women's health assistant. Analyze the following menstrual cycle data and provide personalized insights and predictions. Focus on patterns, potential health considerations, and recommendations. Be empathetic and professional in your response.
 
 Cycle Data: ${JSON.stringify(cycles, null, 2)}
@@ -25,39 +22,38 @@ Provide insights including:
 3. Symptom analysis
 4. General health recommendations`;
 
-    const response = await fetch(`${GEMINI_API_URL}?key=${GEMINI_API_KEY}`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        contents: [{
-          parts: [{
-            text: prompt
-          }]
-        }]
-      })
-    });
-
-    if (!response.ok) {
-      throw new Error(`Gemini API error: ${response.statusText}`);
-    }
-
-    const data: GeminiResponse = await response.json();
-    return data.candidates?.[0]?.content?.parts?.[0]?.text || 'No insights available';
+    const result = await model.generateContent(prompt);
+    const response = await result.response;
+    return response.text();
   } catch (error) {
-    console.error('Error generating insights with Gemini:', error);
+    console.error('Error in generateCycleInsights:', error);
     return 'Unable to generate insights at this time. Please try again later.';
   }
 };
 
-export const predictNextCycle = async (cycles: CycleData[]): Promise<{
+export const predictNextCycle = async (cycles: any[]): Promise<{
   nextPeriodDate: string;
   fertileWindow: { start: string; end: string; ovulationDay: string };
   confidence: 'low' | 'medium' | 'high';
   message: string;
 }> => {
+  // Default response in case of error
+  const defaultResponse = {
+    nextPeriodDate: new Date(Date.now() + 28 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
+    fertileWindow: {
+      start: new Date(Date.now() + 10 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
+      end: new Date(Date.now() + 16 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
+      ovulationDay: new Date(Date.now() + 14 * 24 * 60 * 60 * 1000).toISOString().split('T')[0]
+    },
+    confidence: 'low' as const,
+    message: 'Using default prediction. Please check your cycle data and try again.'
+  };
+
   try {
+    if (!cycles || cycles.length === 0) {
+      return defaultResponse;
+    }
+
     if (cycles.length < 3) {
       // Not enough data, return default values
       const nextDate = new Date();

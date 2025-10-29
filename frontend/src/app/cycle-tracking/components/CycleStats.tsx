@@ -1,17 +1,18 @@
 'use client';
 
-import { format, differenceInDays } from 'date-fns';
-import { CycleStats as CycleStatsType, CyclePrediction, CycleEntry } from '../types';
+import { format } from 'date-fns';
+import { CycleStats as CycleStatsType, CycleEntry } from '../types';
+import NextPeriodPanel from './NextPeriodPanel';
 
 interface CycleStatsProps {
   stats: CycleStatsType;
-  predictions: CyclePrediction | null;
   onAddEntry: () => void;
-  onSelectEntry: (entry: CycleEntry) => void;
-  entries: CycleEntry[];
+  onSelectEntry?: (entry: CycleEntry) => void;
+  entries?: CycleEntry[];
+  userId: string;
 }
 
-export default function CycleStats({ stats, predictions, onAddEntry }: CycleStatsProps) {
+export default function CycleStats({ stats, onAddEntry, userId }: CycleStatsProps) {
   const formatDate = (dateString: string | null | undefined) => {
     if (!dateString) return 'N/A';
     try {
@@ -23,45 +24,9 @@ export default function CycleStats({ stats, predictions, onAddEntry }: CycleStat
     }
   };
 
-
-  const getDaysAway = (dateString: string | null | undefined): string | null => {
-    if (!dateString) return null;
-    try {
-      const date = new Date(dateString);
-      if (isNaN(date.getTime())) return 'Invalid date';
-      
-      const days = differenceInDays(date, new Date());
-      if (days === 0) return 'Today';
-      if (days === 1) return 'Tomorrow';
-      if (days === -1) return 'Yesterday';
-      return `${Math.abs(days)} ${days > 0 ? 'days' : 'days ago'}`;
-    } catch (error) {
-      console.error('Error calculating days away:', error);
-      return null;
-    }
-  };
-
-  const getFertilityStatus = () => {
-    if (!predictions?.fertileWindow) return 'Unknown';
-    
-    const today = new Date();
-    const fertileStart = new Date(predictions.fertileWindow.start);
-    const fertileEnd = new Date(predictions.fertileWindow.end);
-    
-    if (isNaN(fertileStart.getTime()) || isNaN(fertileEnd.getTime())) {
-      return 'Unknown';
-    }
-    
-    if (today < fertileStart) {
-      const days = differenceInDays(fertileStart, today);
-      return `Not yet (in ${days} ${days === 1 ? 'day' : 'days'})`;
-    }
-    
-    if (today > fertileEnd) {
-      return 'Not fertile';
-    }
-    
-    return 'Fertile window';
+  const getFertilityStatus = (): string => {
+    // Return a default value for now
+    return 'Not available';
   };
 
   return (
@@ -165,118 +130,13 @@ export default function CycleStats({ stats, predictions, onAddEntry }: CycleStat
               <span className="text-gray-600">Fertility</span>
               <span className="text-sm text-gray-500">{getFertilityStatus()}</span>
             </div>
-            {predictions?.fertileWindow && (
-              <div className="w-full bg-gray-200 rounded-full h-2.5">
-                <div 
-                  className="bg-blue-500 h-2.5 rounded-full" 
-                  style={{
-                    width: '100%',
-                    backgroundImage: 'linear-gradient(90deg, #3b82f6 0%, #8b5cf6 50%, #ec4899 100%)',
-                    opacity: 0.8
-                  }}
-                ></div>
-              </div>
-            )}
           </div>
-          
-          {predictions?.ovulationDate && (
-            <div>
-              <div className="flex justify-between items-center">
-                <span className="text-gray-600">Ovulation</span>
-                <span className="text-sm text-gray-500">
-                  {formatDate(predictions.ovulationDate)}
-                  {getDaysAway(predictions.ovulationDate) && (
-                    <span className="ml-2 text-xs bg-purple-100 text-purple-800 px-2 py-0.5 rounded-full">
-                      {getDaysAway(predictions.ovulationDate)}
-                    </span>
-                  )}
-                </span>
-              </div>
-              <div className="w-full bg-gray-200 rounded-full h-1.5 mt-1">
-                <div 
-                  className="bg-purple-500 h-1.5 rounded-full" 
-                  style={{ width: '100%' }}
-                ></div>
-              </div>
-            </div>
-          )}
         </div>
       </div>
 
-      <div className="bg-white p-6 rounded-lg shadow-md">
-        <h2 className="text-xl font-semibold text-gray-800 mb-4">Next Period</h2>
-        
-        {predictions?.nextPeriodStart ? (
-          <div className="space-y-4">
-            <div className="bg-pink-50 border-l-4 border-pink-500 p-4 rounded-r">
-              <div className="flex items-start justify-between">
-                <div>
-                  <p className="text-sm font-medium text-pink-800">Expected Start</p>
-                  <p className="text-2xl font-bold text-gray-900">
-                    {formatDate(predictions.nextPeriodStart)}
-                  </p>
-                  <p className="text-sm text-pink-600 mt-1">
-                    {getDaysAway(predictions.nextPeriodStart)}
-                  </p>
-                </div>
-                <div className="bg-pink-100 p-3 rounded-full">
-                  <svg className="w-6 h-6 text-pink-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
-                  </svg>
-                </div>
-              </div>
-              
-              {predictions.nextPeriodEnd && (
-                <div className="mt-4 pt-4 border-t border-pink-100">
-                  <p className="text-sm text-gray-600">
-                    Expected to last until {formatDate(predictions.nextPeriodEnd)}
-                  </p>
-                  <div className="w-full bg-gray-200 rounded-full h-2 mt-2">
-                    <div 
-                      className="bg-pink-500 h-2 rounded-full" 
-                      style={{ width: '100%' }}
-                    ></div>
-                  </div>
-                </div>
-              )}
-              <div className="flex items-start mt-4">
-                <div className="flex-shrink-0">
-                  <svg className="h-5 w-5 text-pink-500" fill="currentColor" viewBox="0 0 20 20">
-                    <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h2a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clipRule="evenodd" />
-                  </svg>
-                </div>
-                <div className="ml-3">
-                  <p className="text-sm text-pink-700">
-                    {predictions.confidence === 'high' 
-                      ? 'High confidence prediction based on your cycle history.'
-                      : predictions.confidence === 'medium'
-                        ? 'Medium confidence prediction. Add more data for better accuracy.'
-                        : 'Low confidence prediction. Consider adding more cycle data.'}
-                  </p>
-                </div>
-              </div>
-            </div>
-            
-            {predictions.fertileWindow && (
-              <div className="bg-blue-50 p-4 rounded-lg mt-4">
-                <div className="flex items-center">
-                  <svg className="w-5 h-5 text-blue-600 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                  </svg>
-                  <p className="text-sm text-blue-700">
-                    Fertile window: {formatDate(predictions.fertileWindow.start)} - {formatDate(predictions.fertileWindow.end)}
-                  </p>
-                </div>
-              </div>
-            )}
-          </div>
-        ) : (
-          <div className="text-center py-6">
-            <p className="text-gray-500">No prediction data available</p>
-          </div>
-        )}
-      </div>
-      
+      {/* Next Period Panel */}
+      <NextPeriodPanel userId={userId} />
+
       {stats.lastPeriodStart && (
         <div className="bg-white p-6 rounded-lg shadow-md mt-6">
           <h2 className="text-xl font-semibold text-gray-800 mb-4">Last Period</h2>
