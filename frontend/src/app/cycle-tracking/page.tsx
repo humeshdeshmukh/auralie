@@ -2,9 +2,9 @@
 
 import { useState, useEffect } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
-import { CycleEntry, CyclePrediction } from './types';
+import { CycleEntry } from './types';
 import { getCycleEntries, saveCycleEntry, updateCycleEntry, deleteCycleEntry } from './services/cycleService';
-import { getCyclePredictions, calculateCycleStats } from './services/predictionService';
+import { calculateCycleStats } from './services/predictionService';
 
 // Components
 import CycleCalendar from './components/CycleCalendar';
@@ -14,7 +14,6 @@ import CycleStats from './components/CycleStats';
 export default function CycleTrackingPage() {
   const { user } = useAuth();
   const [entries, setEntries] = useState<CycleEntry[]>([]);
-  const [predictions, setPredictions] = useState<CyclePrediction | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [showForm, setShowForm] = useState(false);
@@ -30,42 +29,6 @@ export default function CycleTrackingPage() {
         const userEntries = await getCycleEntries(user.uid);
         setEntries(userEntries);
         
-        // Only fetch predictions if we have enough data
-        if (userEntries.length > 0) {
-          try {
-            const prediction = await getCyclePredictions(userEntries);
-            setPredictions(prediction);
-          } catch (predictionError) {
-            console.error('Error getting predictions:', predictionError);
-            // Fallback to basic stats if prediction fails
-            const stats = calculateCycleStats(userEntries);
-            setPredictions({
-              nextPeriodStart: stats.nextPeriodStart || new Date().toISOString(),
-              nextPeriodEnd: new Date(
-                new Date(stats.nextPeriodStart || new Date()).getTime() + 
-                (stats.averagePeriodLength * 24 * 60 * 60 * 1000)
-              ).toISOString(),
-              fertileWindow: {
-                start: new Date(
-                  new Date(stats.nextPeriodStart || new Date()).getTime() - 
-                  (stats.averageCycleLength * 24 * 60 * 60 * 1000) + 
-                  (stats.averageCycleLength * 24 * 60 * 60 * 1000 * 0.4)
-                ).toISOString(),
-                end: new Date(
-                  new Date(stats.nextPeriodStart || new Date()).getTime() - 
-                  (stats.averageCycleLength * 24 * 60 * 60 * 1000) + 
-                  (stats.averageCycleLength * 24 * 60 * 60 * 1000 * 0.7)
-                ).toISOString()
-              },
-              ovulationDate: new Date(
-                new Date(stats.nextPeriodStart || new Date()).getTime() - 
-                (stats.averageCycleLength * 24 * 60 * 60 * 1000 * 0.3)
-              ).toISOString(),
-              confidence: stats.cycleVariability < 3 ? 'high' : 
-                         stats.cycleVariability < 7 ? 'medium' : 'low'
-            });
-          }
-        }
       } catch (err) {
         console.error('Error fetching cycle data:', err);
         setError('Failed to load cycle data. Please try again later.');
@@ -161,7 +124,6 @@ export default function CycleTrackingPage() {
               <div className="md:col-span-2">
                 <CycleCalendar 
                   entries={entries} 
-                  predictions={predictions}
                   onSelectDate={(date) => {
                     const entry = entries.find(e => e.startDate.startsWith(date));
                     if (entry) {
@@ -175,11 +137,7 @@ export default function CycleTrackingPage() {
                 />
               </div>
               <div>
-                <CycleStats 
-                  stats={stats} 
-                  userId={user?.uid || ''}
-                  onAddEntry={() => setShowForm(true)}
-                />
+                <CycleStats stats={stats} />
               </div>
             </div>
 

@@ -8,7 +8,6 @@ import {
   startOfMonth, 
   endOfMonth,
   eachDayOfInterval,
-  isSameDay,
   isToday,
   isWithinInterval,
   parseISO,
@@ -16,22 +15,18 @@ import {
   endOfWeek,
   isSameMonth
 } from 'date-fns';
-import { CycleEntry, CyclePrediction } from '../types';
+import { CycleEntry } from '../types';
 
 interface CycleCalendarProps {
   entries: CycleEntry[];
-  predictions: CyclePrediction | null;
   onSelectDate: (date: string) => void;
 }
 
-export default function CycleCalendar({ entries, predictions, onSelectDate }: CycleCalendarProps) {
+export default function CycleCalendar({ entries, onSelectDate }: CycleCalendarProps) {
   const [currentDate, setCurrentDate] = useState(new Date());
   
   const monthStart = startOfMonth(currentDate);
   const monthEnd = endOfMonth(currentDate);
-  // Calculate days in month for reference (not used directly, but keeping for potential future use)
-  const daysInMonth = eachDayOfInterval({ start: monthStart, end: monthEnd });
-
   // Get the start of the week for the first day of the month
   const startOfFirstWeek = startOfWeek(monthStart, { weekStartsOn: 0 });
   
@@ -40,38 +35,6 @@ export default function CycleCalendar({ entries, predictions, onSelectDate }: Cy
   
   // Get all days to display in the calendar (including days from previous/next month)
   const calendarDays = eachDayOfInterval({ start: startOfFirstWeek, end: endOfLastWeek });
-
-  // Check if a date is within a period with proper null/undefined checks
-  const isDateInPeriod = (date: Date, startDate: string | undefined, endDate: string | undefined) => {
-    if (!startDate || !endDate) return false;
-    
-    try {
-      const start = parseISO(startDate);
-      const end = parseISO(endDate);
-      return isWithinInterval(date, { start, end });
-    } catch (error) {
-      console.error('Error parsing dates:', error);
-      return false;
-    }
-  };
-
-  // Check if a date is a predicted period with null checks
-  const isPredictedPeriod = (date: Date) => {
-    if (!predictions?.nextPeriodStart || !predictions?.nextPeriodEnd) return false;
-    return isDateInPeriod(date, predictions.nextPeriodStart, predictions.nextPeriodEnd);
-  };
-
-  // Check if a date is in the fertile window
-  const isFertileWindow = (date: Date) => {
-    if (!predictions?.fertileWindow) return false;
-    return isDateInPeriod(date, predictions.fertileWindow.start, predictions.fertileWindow.end);
-  };
-
-  // Check if a date is ovulation day
-  const isOvulationDay = (date: Date) => {
-    if (!predictions?.ovulationDate) return false;
-    return isSameDay(parseISO(predictions.ovulationDate), date);
-  };
 
   // Get the entry for a specific date (check both start and end dates)
   const getEntryForDate = (date: Date) => {
@@ -86,23 +49,13 @@ export default function CycleCalendar({ entries, predictions, onSelectDate }: Cy
   const getDateBackground = (date: Date) => {
     const entry = getEntryForDate(date);
     
-    // Show actual entry first
+    // Show actual entry
     if (entry) {
       if (entry.flowLevel === 'heavy') return 'bg-red-100 border-red-400';
       if (entry.flowLevel === 'medium') return 'bg-red-50 border-red-300';
       if (entry.flowLevel === 'light') return 'bg-pink-50 border-pink-200';
       if (entry.flowLevel === 'spotting') return 'bg-pink-100 border-pink-200 border-dashed';
       return 'bg-green-50 border-green-200'; // Default for entries without flow level
-    }
-    
-    // Then show predictions for future dates only
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-    
-    if (date >= today) {
-      if (isPredictedPeriod(date)) return 'bg-pink-50 border-pink-200 border-dashed';
-      if (isFertileWindow(date)) return 'bg-blue-50 border-blue-200';
-      if (isOvulationDay(date)) return 'bg-purple-100 border-purple-400';
     }
     
     return 'bg-white border-gray-200';
@@ -214,9 +167,6 @@ export default function CycleCalendar({ entries, predictions, onSelectDate }: Cy
                 </div>
               )}
               
-              {isOvulationDay(date) && (
-                <div className="absolute bottom-1 right-1 w-2 h-2 rounded-full bg-purple-500"></div>
-              )}
             </button>
           );
         })}
@@ -228,16 +178,8 @@ export default function CycleCalendar({ entries, predictions, onSelectDate }: Cy
           <span>Period</span>
         </div>
         <div className="flex items-center">
-          <span className="w-3 h-3 rounded-full border-2 border-dashed border-pink-300 mr-1"></span>
-          <span>Predicted</span>
-        </div>
-        <div className="flex items-center">
-          <span className="w-3 h-3 rounded-full bg-blue-100 mr-1"></span>
-          <span>Fertile</span>
-        </div>
-        <div className="flex items-center">
-          <span className="w-3 h-3 rounded-full bg-purple-100 mr-1"></span>
-          <span>Ovulation</span>
+          <span className="w-3 h-3 rounded-full bg-pink-100 border border-pink-200 border-dashed mr-1"></span>
+          <span>Spotting</span>
         </div>
       </div>
     </div>

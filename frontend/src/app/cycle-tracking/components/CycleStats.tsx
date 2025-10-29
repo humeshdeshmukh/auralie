@@ -2,17 +2,14 @@
 
 import { format } from 'date-fns';
 import { CycleStats as CycleStatsType, CycleEntry } from '../types';
-import NextPeriodPanel from './NextPeriodPanel';
 
 interface CycleStatsProps {
   stats: CycleStatsType;
-  onAddEntry: () => void;
   onSelectEntry?: (entry: CycleEntry) => void;
   entries?: CycleEntry[];
-  userId: string;
 }
 
-export default function CycleStats({ stats, onAddEntry, userId }: CycleStatsProps) {
+export default function CycleStats({ stats }: CycleStatsProps) {
   const formatDate = (dateString: string | null | undefined) => {
     if (!dateString) return 'N/A';
     try {
@@ -22,11 +19,6 @@ export default function CycleStats({ stats, onAddEntry, userId }: CycleStatsProp
       console.error('Error formatting date:', error);
       return 'Invalid date';
     }
-  };
-
-  const getFertilityStatus = (): string => {
-    // Return a default value for now
-    return 'Not available';
   };
 
   return (
@@ -113,29 +105,6 @@ export default function CycleStats({ stats, onAddEntry, userId }: CycleStatsProp
         </div>
       </div>
 
-      <div className="bg-white p-6 rounded-lg shadow-md">
-        <div className="flex justify-between items-center mb-4">
-          <h2 className="text-xl font-semibold text-gray-800">Current Status</h2>
-          <button
-            onClick={onAddEntry}
-            className="text-sm bg-pink-600 hover:bg-pink-700 text-white px-3 py-1 rounded-md"
-          >
-            + Add Entry
-          </button>
-        </div>
-        
-        <div className="space-y-4">
-          <div>
-            <div className="flex justify-between items-center mb-1">
-              <span className="text-gray-600">Fertility</span>
-              <span className="text-sm text-gray-500">{getFertilityStatus()}</span>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      {/* Next Period Panel */}
-      <NextPeriodPanel userId={userId} />
 
       {stats.lastPeriodStart && (
         <div className="bg-white p-6 rounded-lg shadow-md mt-6">
