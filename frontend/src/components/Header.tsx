@@ -153,72 +153,60 @@ export default function Header() {
 
             {/* Auth Section */}
             <div className="flex items-center space-x-4">
-              {!loading && (
-                user ? (
-                  <div className="hidden md:flex items-center space-x-4">
-                    <div className="relative group">
-                      <button className="flex items-center space-x-1 text-sm font-medium text-gray-700 hover:text-pink-600">
-                        <div className="w-8 h-8 rounded-full bg-pink-100 flex items-center justify-center">
-                          <span className="text-pink-600 font-medium">
-                            {user.email?.charAt(0).toUpperCase()}
-                          </span>
-                        </div>
-                        <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-                        </svg>
-                      </button>
-                      <div className="absolute right-0 mt-2 w-48 origin-top-right bg-white rounded-md shadow-lg ring-1 ring-black ring-opacity-5 focus:outline-none opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200">
-                        <div className="py-1">
-                          <Link
-                            href="/profile"
-                            className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 hover:text-pink-600"
-                          >
-                            Profile
-                          </Link>
-                          <Link
-                            href="/profile/settings"
-                            className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 hover:text-pink-600"
-                          >
-                            Settings
-                          </Link>
-                          <button
-                            onClick={handleSignOut}
-                            className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 hover:text-pink-600"
-                          >
-                            Sign out
-                          </button>
-                        </div>
+              {!loading && user ? (
+                <div className="hidden md:flex items-center space-x-4">
+                  <div className="relative group">
+                    <button className="flex items-center space-x-1 text-sm font-medium text-gray-700 hover:text-pink-600">
+                      <div className="w-8 h-8 rounded-full bg-pink-100 flex items-center justify-center">
+                        <span className="text-pink-600 font-medium">
+                          {user.email?.charAt(0).toUpperCase()}
+                        </span>
+                      </div>
+                      <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                      </svg>
+                    </button>
+                    <div className="absolute right-0 mt-2 w-48 origin-top-right bg-white rounded-md shadow-lg ring-1 ring-black ring-opacity-5 focus:outline-none opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200">
+                      <div className="py-1">
+                        <Link
+                          href="/profile"
+                          className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 hover:text-pink-600"
+                        >
+                          Profile
+                        </Link>
+                        <Link
+                          href="/profile/settings"
+                          className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 hover:text-pink-600"
+                        >
+                          Settings
+                        </Link>
+                        <button
+                          onClick={handleSignOut}
+                          className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 hover:text-pink-600"
+                        >
+                          Sign out
+                        </button>
                       </div>
                     </div>
                   </div>
-                ) : (
-                  <nav className="flex items-center space-x-4">
-                    {navItems.map((item) => (
-                      <Link
-                        key={item.name}
-                        href={item.href}
-                        className="flex items-center px-3 py-2 text-sm font-medium text-gray-700 rounded-md hover:bg-gray-100"
-                      >
-                        {item.icon}
-                        {item.name}
-                      </Link>
-                    ))}
-                    <Link 
-                      href="/signup"
-                      className="bg-pink-600 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-pink-700 transition-colors"
-                    >
-                      Get Started
-                    </Link>
-                  </nav>
-                )
+                </div>
+              ) : (
+                <div className="hidden md:block">
+                  <Link 
+                    href="/signup"
+                    className="bg-pink-600 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-pink-700 transition-colors"
+                  >
+                    Get Started
+                  </Link>
+                </div>
               )}
               
               {/* Mobile auth button */}
-              <div className="md:hidden">
+              <div className="md:hidden flex items-center">
                 {!loading && user ? (
                   <Link 
                     href="/profile"
-                    className="text-gray-700 hover:text-pink-600"
+                    className="text-gray-700 hover:text-pink-600 mr-2"
                   >
                     <div className="w-8 h-8 rounded-full bg-pink-100 flex items-center justify-center">
                       <span className="text-pink-600 font-medium">
@@ -229,29 +217,29 @@ export default function Header() {
                 ) : (
                   <Link 
                     href="/login"
-                    className="text-gray-700 hover:text-pink-600"
+                    className="text-gray-700 hover:text-pink-600 mr-2"
                   >
                     <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
                     </svg>
                   </Link>
                 )}
-              </div>
 
-              {/* Mobile menu button */}
-              <button
-                className="lg:hidden p-2 rounded-lg text-text-secondary hover:text-primary hover:bg-background-secondary/50 transition-colors"
-                onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
-                aria-label="Toggle menu"
-              >
-                <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  {isMobileMenuOpen ? (
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                  ) : (
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
-                  )}
-                </svg>
-              </button>
+                {/* Mobile menu button */}
+                <button
+                  className="lg:hidden p-2 rounded-lg text-text-secondary hover:text-primary hover:bg-background-secondary/50 transition-colors"
+                  onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
+                  aria-label="Toggle menu"
+                >
+                  <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    {isMobileMenuOpen ? (
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                    ) : (
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
+                    )}
+                  </svg>
+                </button>
+              </div>
             </div>
           </div>
 
@@ -265,8 +253,8 @@ export default function Header() {
                     className="block px-4 py-3 text-base font-medium text-text-primary hover:text-primary hover:bg-background-secondary/30 rounded-lg transition-colors duration-200"
                     onClick={() => setIsMobileMenuOpen(false)}
                   >
-                    <div className="flex items-center justify-between">
-                      {item.icon}
+                    <div className="flex items-center">
+                      <span className="mr-2">{item.icon}</span>
                       {item.name}
                     </div>
                   </Link>
