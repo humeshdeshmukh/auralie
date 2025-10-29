@@ -62,23 +62,14 @@ class Settings(BaseSettings):
     
     # Gemini AI Configuration
     GEMINI_API_KEY: str = os.getenv("GEMINI_API_KEY", "")
-    GEMINI_MODEL_NAME: str = os.getenv("GEMINI_MODEL_NAME", "gemini-2.5-flash")
+    GEMINI_MODEL_NAME: str = os.getenv("GEMINI_MODEL_NAME", "gemini-pro")
     GEMINI_TEMPERATURE: float = float(os.getenv("GEMINI_TEMPERATURE", "0.2"))
     GEMINI_MAX_TOKENS: int = int(os.getenv("GEMINI_MAX_TOKENS", "1024"))
-    
-    # Cycle Prediction Model
-    CYCLE_PREDICTION_ENABLED: bool = os.getenv("CYCLE_PREDICTION_ENABLED", "True").lower() == "true"
-    CYCLE_PREDICTION_MODEL_FILENAME: str = "cycle_predictor.joblib"
-    CYCLE_SCALER_FILENAME: str = "cycle_scaler.joblib"
-    CYCLE_METADATA_FILENAME: str = "cycle_metadata.json"
     
     # Model Training Parameters
     MODEL_TRAIN_TEST_SPLIT: float = 0.2
     MODEL_RANDOM_STATE: int = 42
     MODEL_N_ESTIMATORS: int = 100
-    
-    # Minimum number of cycles required for training
-    MIN_CYCLES_FOR_TRAINING: int = 3
     
     # Logging Configuration
     LOG_LEVEL: str = os.getenv("LOG_LEVEL", "INFO")
@@ -90,21 +81,9 @@ class Settings(BaseSettings):
         self._create_directories()
     
     def _create_directories(self):
-        """Create required directories if they don't exist"""
+        """Create required directories if they don't exist."""
         os.makedirs(self.ML_MODELS_DIR, exist_ok=True)
         os.makedirs(self.ML_LOGS_DIR, exist_ok=True)
-    
-    @property
-    def cycle_model_path(self) -> str:
-        return str(Path(self.ML_MODELS_DIR) / self.CYCLE_PREDICTION_MODEL_FILENAME)
-    
-    @property
-    def cycle_scaler_path(self) -> str:
-        return str(Path(self.ML_MODELS_DIR) / self.CYCLE_SCALER_FILENAME)
-    
-    @property
-    def cycle_metadata_path(self) -> str:
-        return str(Path(self.ML_MODELS_DIR) / self.CYCLE_METADATA_FILENAME)
     
     class Config:
         case_sensitive = True

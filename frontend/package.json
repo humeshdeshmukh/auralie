@@ -9,10 +9,21 @@
     "lint": "eslint"
   },
   "dependencies": {
+    "@chakra-ui/react": "^3.28.0",
+    "@date-io/date-fns": "^3.2.1",
+    "@emotion/react": "^11.14.0",
+    "@emotion/styled": "^11.14.1",
+    "@google/generative-ai": "^0.24.1",
     "@heroicons/react": "^2.2.0",
+    "@mui/icons-material": "^7.3.4",
+    "@mui/material": "^7.3.4",
+    "@mui/x-date-pickers": "^8.15.0",
     "@next-auth/firebase-adapter": "^2.0.1",
     "@react-firebase/auth": "^0.2.10",
     "@react-firebase/database": "^0.3.11",
+    "@types/d3-scale": "^4.0.9",
+    "@types/d3-scale-chromatic": "^3.1.0",
+    "@types/date-fns": "^2.5.3",
     "chart.js": "^4.5.1",
     "date-fns": "^4.1.0",
     "firebase": "^12.4.0",
@@ -23,17 +34,26 @@
     "next-auth": "^4.24.12",
     "react": "19.2.0",
     "react-chartjs-2": "^5.3.1",
-    "react-dom": "19.2.0"
+    "react-dom": "19.2.0",
+    "react-hot-toast": "^2.6.0",
+    "recharts": "^3.3.0"
   },
   "devDependencies": {
+    "@testing-library/jest-dom": "^6.9.1",
+    "@testing-library/react": "^16.3.0",
+    "@testing-library/user-event": "^14.6.1",
+    "@types/jest": "^30.0.0",
     "@types/node": "^20",
     "@types/react": "^19",
     "@types/react-dom": "^19",
     "autoprefixer": "^10.4.21",
     "eslint": "^9",
     "eslint-config-next": "16.0.0",
+    "identity-obj-proxy": "^3.0.0",
+    "jest": "^30.2.0",
     "postcss": "^8.5.6",
     "tailwindcss": "^3.4.0",
+    "ts-jest": "^29.4.5",
     "typescript": "^5"
   }
 }

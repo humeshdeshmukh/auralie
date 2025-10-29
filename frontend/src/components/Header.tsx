@@ -1,13 +1,23 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, MouseEvent } from 'react';
 import { useRouter } from 'next/navigation';
 import { auth } from '@/lib/firebase';
 import { signOut } from 'firebase/auth';
 import Link from 'next/link';
 
+interface NavItem {
+  name: string;
+  href: string;
+  icon: React.ReactNode;
+  onClick?: (e: MouseEvent<HTMLAnchorElement>) => void;
+  dropdown?: {
+    name: string;
+    href: string;
+  }[];
+}
+
 export default function Header() {
-  const [activeDropdown, setActiveDropdown] = useState<string | null>(null);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [user, setUser] = useState(auth.currentUser);
   const [loading, setLoading] = useState(true);
@@ -31,7 +41,7 @@ export default function Header() {
     }
   };
 
-  const navItems = [
+  const navItems: NavItem[] = [
     {
       name: 'Dashboard',
       href: '/dashboard',
@@ -78,6 +88,13 @@ export default function Header() {
       )
     }
   ];
+
+  // Mobile navigation items - reuse the same items as desktop but without dropdowns
+  const mobileNavItems = navItems.map(({ name, href, icon }) => ({
+    name,
+    href,
+    icon
+  }));
 
   return (
     <>
@@ -175,20 +192,24 @@ export default function Header() {
                     </div>
                   </div>
                 ) : (
-                  <div className="hidden md:flex items-center space-x-3">
-                    <Link 
-                      href="/login"
-                      className="px-4 py-2 text-sm font-medium text-gray-700 hover:text-pink-600"
-                    >
-                      Sign In
-                    </Link>
+                  <nav className="flex items-center space-x-4">
+                    {navItems.map((item) => (
+                      <Link
+                        key={item.name}
+                        href={item.href}
+                        className="flex items-center px-3 py-2 text-sm font-medium text-gray-700 rounded-md hover:bg-gray-100"
+                      >
+                        {item.icon}
+                        {item.name}
+                      </Link>
+                    ))}
                     <Link 
                       href="/signup"
                       className="bg-pink-600 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-pink-700 transition-colors"
                     >
                       Get Started
                     </Link>
-                  </div>
+                  </nav>
                 )
               )}
               
@@ -237,60 +258,18 @@ export default function Header() {
           {/* Mobile menu */}
           <div className={`lg:hidden transition-all duration-300 ease-in-out ${isMobileMenuOpen ? 'max-h-screen opacity-100' : 'max-h-0 opacity-0 overflow-hidden'}`}>
             <div className="px-4 pt-2 pb-4 space-y-1 bg-white border-t border-gray-100 shadow-inner">
-              {navItems.map((item) => (
+              {mobileNavItems.map((item) => (
                 <div key={item.name} className="border-b border-gray-50 last:border-0">
-                  <a
+                  <Link
                     href={item.href}
                     className="block px-4 py-3 text-base font-medium text-text-primary hover:text-primary hover:bg-background-secondary/30 rounded-lg transition-colors duration-200"
-                    onClick={(e) => {
-                      if (item.onClick) {
-                        item.onClick(e);
-                      } else if (item.href.startsWith('#')) {
-                        e.preventDefault();
-                        const section = document.getElementById(item.href.substring(1));
-                        if (section) {
-                          section.scrollIntoView({ behavior: 'smooth' });
-                        }
-                      }
-                      setIsMobileMenuOpen(false);
-                    }}
+                    onClick={() => setIsMobileMenuOpen(false)}
                   >
                     <div className="flex items-center justify-between">
+                      {item.icon}
                       {item.name}
-                      {item.dropdown && (
-                        <svg 
-                          className={`w-4 h-4 transform transition-transform ${activeDropdown === item.name ? 'rotate-180' : ''}`}
-                          fill="none" 
-                          stroke="currentColor" 
-                          viewBox="0 0 24 24"
-                          onClick={(e) => {
-                            e.preventDefault();
-                            e.stopPropagation();
-                            setActiveDropdown(activeDropdown === item.name ? null : item.name);
-                          }}
-                        >
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-                        </svg>
-                      )}
                     </div>
-                  </a>
-                  {item.dropdown && activeDropdown === item.name && (
-                    <div className="pl-6 py-1 space-y-1 bg-white/50">
-                      {item.dropdown.map((dropdownItem) => (
-                        <a
-                          key={dropdownItem}
-                          href={`${item.href}/${dropdownItem.toLowerCase().replace(' ', '-')}`}
-                          className="block px-4 py-2 text-sm text-text-secondary hover:text-primary hover:bg-primary/5 rounded-lg transition-colors duration-200"
-                          onClick={() => {
-                            setIsMobileMenuOpen(false);
-                            setActiveDropdown(null);
-                          }}
-                        >
-                          {dropdownItem}
-                        </a>
-                      ))}
-                    </div>
-                  )}
+                  </Link>
                 </div>
               ))}
               <div className="pt-3 mt-2 space-y-2">

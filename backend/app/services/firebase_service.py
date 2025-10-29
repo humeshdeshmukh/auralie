@@ -228,6 +228,5 @@ class RealtimeDBService:
 # Initialize services
 auth_service = AuthService()
 user_service = FirestoreService('users')
-cycle_service = FirestoreService('menstrual_cycles')
 symptom_service = FirestoreService('symptoms')
 realtime_db = RealtimeDBService()

@@ -5,6 +5,7 @@ import PrivateRoute from './components/PrivateRoute';
 import Home from './pages/Home';
 import Login from './pages/Login';
 import Signup from './pages/Signup';
+import { CycleTrackingPage } from './features/cycle-tracking/pages/CycleTrackingPage';
 
 function App() {
   return (
@@ -18,6 +19,14 @@ function App() {
             element={
               <PrivateRoute>
                 <Home />
+              </PrivateRoute>
+            }
+          />
+          <Route
+            path="/cycle-tracking"
+            element={
+              <PrivateRoute>
+                <CycleTrackingPage />
               </PrivateRoute>
             }
           />
