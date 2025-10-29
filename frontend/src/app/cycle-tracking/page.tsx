@@ -185,18 +185,62 @@ export default function CycleTrackingPage() {
 
             {entries.length > 0 && (
               <div className="bg-white rounded-lg shadow-md p-6">
-                <h2 className="text-xl font-semibold mb-4 text-gray-800">Recent Entries</h2>
+                <div className="flex justify-between items-center mb-4">
+                  <h2 className="text-xl font-semibold text-gray-800">Recent Entries</h2>
+                  {entries.length > 3 && (
+                    <button 
+                      onClick={() => {/* Add navigation to full entries list */}}
+                      className="text-sm text-pink-600 hover:text-pink-800 font-medium"
+                    >
+                      See All Entries
+                    </button>
+                  )}
+                </div>
                 <div className="space-y-4">
-                  {entries.slice(0, 5).map(entry => (
+                  {entries.slice(0, 3).map(entry => (
                     <div key={entry.id} className="border-b border-gray-100 pb-3">
                       <div className="flex justify-between items-center">
                         <div>
-                          <span className="font-medium">
-                            {new Date(entry.startDate).toLocaleDateString()}
-                            {entry.endDate && ` - ${new Date(entry.endDate).toLocaleDateString()}`}
-                          </span>
+                          <div className="flex items-center space-x-2">
+                            <span className="font-bold text-gray-800">
+                              {new Date(entry.startDate).getDate()}
+                            </span>
+                            <div className="text-sm text-gray-600">
+                              <div>{new Date(entry.startDate).toLocaleString('default', { month: 'short' })}</div>
+                              {entry.endDate && new Date(entry.startDate).getMonth() !== new Date(entry.endDate).getMonth() && (
+                                <div className="text-gray-400">
+                                  {new Date(entry.endDate).toLocaleString('default', { month: 'short' })}
+                                </div>
+                              )}
+                            </div>
+                            {entry.endDate && (
+                              <>
+                                <span className="text-gray-400">-</span>
+                                <span className="font-bold text-gray-800">
+                                  {new Date(entry.endDate).getDate()}
+                                </span>
+                              </>
+                            )}
+                          </div>
+                          <div className="flex flex-wrap gap-2 mt-1">
+                            {entry.flowLevel && (
+                              <span className="text-xs px-2 py-0.5 rounded-full bg-pink-100 text-pink-800">
+                                {entry.flowLevel.charAt(0).toUpperCase() + entry.flowLevel.slice(1)}
+                              </span>
+                            )}
+                            {entry.symptoms?.slice(0, 2).map((symptom, i) => (
+                              <span key={i} className="text-xs px-2 py-0.5 rounded-full bg-blue-50 text-blue-700">
+                                {symptom}
+                              </span>
+                            ))}
+                            {entry.symptoms?.length > 2 && (
+                              <span className="text-xs text-gray-500 self-center">
+                                +{entry.symptoms.length - 2} more
+                              </span>
+                            )}
+                          </div>
                           {entry.notes && (
-                            <p className="text-sm text-gray-600 mt-1">{entry.notes}</p>
+                            <p className="text-sm text-gray-600 mt-1 line-clamp-1">{entry.notes}</p>
                           )}
                         </div>
                         <div className="flex space-x-2">

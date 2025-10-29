@@ -1,15 +1,17 @@
 'use client';
 
 import { format, differenceInDays } from 'date-fns';
-import { CycleStats as CycleStatsType, CyclePrediction } from '../types';
+import { CycleStats as CycleStatsType, CyclePrediction, CycleEntry } from '../types';
 
 interface CycleStatsProps {
   stats: CycleStatsType;
   predictions: CyclePrediction | null;
   onAddEntry: () => void;
+  onSelectEntry: (entry: CycleEntry) => void;
+  entries: CycleEntry[];
 }
 
-export default function CycleStats({ stats, predictions, onAddEntry }: CycleStatsProps) {
+export default function CycleStats({ stats, predictions, onAddEntry, onSelectEntry, entries = [] }: CycleStatsProps) {
   const formatDate = (dateString: string | null | undefined) => {
     if (!dateString) return 'N/A';
     try {
