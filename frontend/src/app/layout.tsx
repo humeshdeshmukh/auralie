@@ -4,6 +4,7 @@ import type { Metadata } from "next";
 import { Inter } from "next/font/google";
 import { Header, Footer } from "@/components";
 import { AuthProvider } from "@/contexts/AuthContext";
+import { CycleProvider } from "@/contexts/CycleContext";
 import "./globals.css";
 
 const inter = Inter({
@@ -38,15 +39,18 @@ export default function RootLayout({
   }
 
   return (
-    <html lang="en">
-      <body 
-        className={`${inter.variable} font-sans antialiased min-h-screen flex flex-col`}
-        suppressHydrationWarning
-      >
+    <html lang="en" className="h-full bg-white">
+      <body className={`${inter.variable} font-sans h-full`}>
         <AuthProvider>
-          <Header />
-          <main className="flex-grow">{children}</main>
-          <Footer />
+          <CycleProvider>
+            <div className="min-h-screen flex flex-col">
+              <Header />
+              <main className="flex-grow">
+                {children}
+              </main>
+              <Footer />
+            </div>
+          </CycleProvider>
         </AuthProvider>
       </body>
     </html>
