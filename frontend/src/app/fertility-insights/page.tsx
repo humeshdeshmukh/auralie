@@ -68,6 +68,55 @@ export default function FertilityInsightsPage() {
   const [insights, setInsights] = useState<FertilityInsight | null>(null);
   const [activeTab, setActiveTab] = useState<'tracker' | 'insights' | 'stats'>('tracker');
   const [symptomAnalysis, setSymptomAnalysis] = useState<string>('');
+  const [isGeneratingInsights, setIsGeneratingInsights] = useState(false);
+
+  // Rate limiting for insights generation
+  const [lastGenerationTime, setLastGenerationTime] = useState<number>(0);
+  const RATE_LIMIT_MS = 30000; // 30 seconds cooldown
+
+  const generateInsights = async () => {
+    const now = Date.now();
+    const timeSinceLastGeneration = now - lastGenerationTime;
+    
+    // Check rate limit
+    if (timeSinceLastGeneration < RATE_LIMIT_MS) {
+      const timeLeft = Math.ceil((RATE_LIMIT_MS - timeSinceLastGeneration) / 1000);
+      alert(`Please wait ${timeLeft} seconds before generating new insights.`);
+      return;
+    }
+
+    try {
+      setIsGeneratingInsights(true);
+      setLastGenerationTime(now);
+      
+      // Generate AI insights
+      const aiInsights = await generateFertilityInsights(entries, stats);
+      setInsights(aiInsights);
+      
+      // Analyze symptom patterns
+      const analysis = await analyzeSymptomPatterns(entries);
+      setSymptomAnalysis(analysis);
+    } catch (error) {
+      console.error('Error generating insights:', error);
+      // Set a default error message that matches the FertilityInsight type
+      setInsights({
+        analysis: 'Failed to generate insights. Please try again later.',
+        recommendations: ['Check your internet connection and try again.'],
+        fertilityWindow: {
+          start: 0,
+          end: 0,
+          isFertile: false
+        },
+        ovulationPrediction: {
+          date: '',
+          confidence: 0
+        },
+        symptomsAnalysis: 'Unable to analyze symptoms due to an error.'
+      });
+    } finally {
+      setIsGeneratingInsights(false);
+    }
+  };
 
   // Load user data on mount
   useEffect(() => {
@@ -80,15 +129,6 @@ export default function FertilityInsightsPage() {
       try {
         // TODO: Replace with actual API calls
         await new Promise(resolve => setTimeout(resolve, 1000));
-        
-        // Generate AI insights
-        const aiInsights = await generateFertilityInsights(MOCK_ENTRIES, MOCK_STATS);
-        setInsights(aiInsights);
-        
-        // Analyze symptom patterns
-        const analysis = await analyzeSymptomPatterns(MOCK_ENTRIES);
-        setSymptomAnalysis(analysis);
-        
         setIsLoading(false);
       } catch (error) {
         console.error('Error loading data:', error);
@@ -239,24 +279,72 @@ export default function FertilityInsightsPage() {
                   />
                 )}
                 
-                {activeTab === 'insights' && insights && (
+                {activeTab === 'insights' && (
                   <div className="space-y-6">
-                    <div className="bg-blue-50 p-4 rounded-lg">
-                      <h3 className="font-semibold text-blue-800 mb-2">Fertility Analysis</h3>
-                      <p className="text-blue-700">{insights.analysis}</p>
-                    </div>
+                    {!insights ? (
+                      <div className="text-center py-12">
+                        <h3 className="text-lg font-medium text-gray-700 mb-3">Get AI-Powered Fertility Insights</h3>
+                        <p className="text-gray-500 mb-6">Click the button below to generate personalized fertility analysis and recommendations.</p>
+                        <button
+                          onClick={generateInsights}
+                          disabled={isGeneratingInsights}
+                          className="inline-flex items-center px-6 py-3 border border-transparent text-base font-medium rounded-md shadow-sm text-white bg-primary hover:bg-primary/90 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary/50 disabled:opacity-50 disabled:cursor-not-allowed"
+                        >
+                          {isGeneratingInsights ? (
+                            <>
+                              <Loader2 className="animate-spin -ml-1 mr-3 h-5 w-5 text-white" />
+                              Generating...
+                            </>
+                          ) : (
+                            'Generate Insights Now'
+                          )}
+                        </button>
+                      </div>
+                    ) : (
+                      <>
+                        <div className="bg-blue-50 p-4 rounded-lg">
+                          <div className="flex justify-between items-start">
+                            <h3 className="font-semibold text-blue-800 mb-2">Fertility Analysis</h3>
+                            <div className="flex items-center gap-2">
+                              <button
+                                onClick={generateInsights}
+                                disabled={isGeneratingInsights}
+                                className="text-xs text-blue-600 hover:text-blue-800 disabled:opacity-50 flex items-center gap-1"
+                              >
+                                {isGeneratingInsights ? (
+                                  <>
+                                    <Loader2 className="animate-spin h-3 w-3" />
+                                    Generating...
+                                  </>
+                                ) : (
+                                  'Regenerate'
+                                )}
+                              </button>
+                              {lastGenerationTime > 0 && (
+                                <span className="text-xs text-gray-400">
+                                  {Math.max(0, Math.ceil((RATE_LIMIT_MS - (Date.now() - lastGenerationTime)) / 1000))}s cooldown
+                                </span>
+                              )}
+                            </div>
+                          </div>
+                          <p className="text-blue-700">{insights.analysis}</p>
+                        </div>
+                      </>
+                    )}
                     
-                    <div>
-                      <h3 className="font-semibold text-gray-800 mb-3">Recommendations</h3>
-                      <ul className="space-y-2">
-                        {insights.recommendations.map((rec, i) => (
-                          <li key={i} className="flex items-start">
-                            <span className="text-green-500 mr-2">•</span>
-                            <span>{rec}</span>
-                          </li>
-                        ))}
-                      </ul>
-                    </div>
+                    {insights?.recommendations?.length > 0 && (
+                      <div>
+                        <h3 className="font-semibold text-gray-800 mb-3">Recommendations</h3>
+                        <ul className="space-y-2">
+                          {insights.recommendations.map((rec, i) => (
+                            <li key={i} className="flex items-start">
+                              <span className="text-green-500 mr-2">•</span>
+                              <span>{rec}</span>
+                            </li>
+                          ))}
+                        </ul>
+                      </div>
+                    )}
                     
                     {symptomAnalysis && (
                       <div className="mt-6">
