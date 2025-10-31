@@ -117,7 +117,8 @@ export default function DashboardPage(): JSX.Element | null {
     if (!chartContainerRef.current) return;
 
     const updateSize = () => {
-      const node = chartContainerRef.current!;
+      if (!chartContainerRef.current) return; // Add null check
+      const node = chartContainerRef.current;
       const rect = node.getBoundingClientRect();
       // read sizes in whole pixels to be stable
       const newW = Math.max(400, Math.round(rect.width));
