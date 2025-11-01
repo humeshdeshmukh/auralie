@@ -4,7 +4,7 @@ import type { Metadata } from "next";
 import { Inter } from "next/font/google";
 import { Header, Footer } from "@/components";
 import { AuthProvider } from "@/contexts/AuthContext";
-import { CycleProvider } from "@/contexts/CycleContext";
+import { FirebaseCycleProvider } from "@/contexts/FirebaseCycleContext";
 import "./globals.css";
 
 const inter = Inter({
@@ -42,7 +42,7 @@ export default function RootLayout({
     <html lang="en" className="h-full bg-white">
       <body className={`${inter.variable} font-sans h-full`}>
         <AuthProvider>
-          <CycleProvider>
+          <FirebaseCycleProvider>
             <div className="min-h-screen flex flex-col">
               <Header />
               <main className="flex-grow">
@@ -50,7 +50,7 @@ export default function RootLayout({
               </main>
               <Footer />
             </div>
-          </CycleProvider>
+          </FirebaseCycleProvider>
         </AuthProvider>
       </body>
     </html>

@@ -5,15 +5,36 @@ export type Cycle = CycleType;
 
 const API_BASE = '/api/cycles'
 
+// Helper function to get auth token
+const getAuthToken = (): string => {
+  if (typeof window !== 'undefined') {
+    return localStorage.getItem('token') || ''
+  }
+  return ''
+}
+
+// Helper function to create headers with auth token
+const getAuthHeaders = () => {
+  const token = getAuthToken()
+  return {
+    'Content-Type': 'application/json',
+    ...(token ? { 'Authorization': `Bearer ${token}` } : {})
+  }
+}
+
 // Cycle Management
 export const getCycles = async (): Promise<Cycle[]> => {
-  const response = await fetch(API_BASE)
+  const response = await fetch(API_BASE, {
+    headers: getAuthHeaders()
+  })
   if (!response.ok) throw new Error('Failed to fetch cycles')
   return response.json()
 }
 
 export const getCurrentCycle = async (): Promise<Cycle | null> => {
-  const response = await fetch(`${API_BASE}/current`)
+  const response = await fetch(`${API_BASE}/current`, {
+    headers: getAuthHeaders()
+  })
   if (!response.ok) {
     if (response.status === 404) return null
     throw new Error('Failed to fetch current cycle')
@@ -22,7 +43,9 @@ export const getCurrentCycle = async (): Promise<Cycle | null> => {
 }
 
 export const getCycleById = async (id: string): Promise<Cycle> => {
-  const response = await fetch(`${API_BASE}/${id}`)
+  const response = await fetch(`${API_BASE}/${id}`, {
+    headers: getAuthHeaders()
+  })
   if (!response.ok) throw new Error('Failed to fetch cycle')
   return response.json()
 }
@@ -30,9 +53,7 @@ export const getCycleById = async (id: string): Promise<Cycle> => {
 export const createCycle = async (cycle: Omit<Cycle, 'id' | 'userId' | 'createdAt' | 'updatedAt'>): Promise<Cycle> => {
   const response = await fetch(API_BASE, {
     method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-    },
+    headers: getAuthHeaders(),
     body: JSON.stringify(cycle)
   })
   if (!response.ok) throw new Error('Failed to create cycle')
@@ -42,9 +63,7 @@ export const createCycle = async (cycle: Omit<Cycle, 'id' | 'userId' | 'createdA
 export const updateCycle = async (id: string, updates: Partial<Cycle>): Promise<Cycle> => {
   const response = await fetch(`${API_BASE}/${id}`, {
     method: 'PATCH',
-    headers: {
-      'Content-Type': 'application/json',
-    },
+    headers: getAuthHeaders(),
     body: JSON.stringify(updates)
   })
   if (!response.ok) throw new Error('Failed to update cycle')
@@ -54,9 +73,7 @@ export const updateCycle = async (id: string, updates: Partial<Cycle>): Promise<
 export const endCurrentCycle = async (endDate: string): Promise<Cycle> => {
   const response = await fetch(`${API_BASE}/current/end`, {
     method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-    },
+    headers: getAuthHeaders(),
     body: JSON.stringify({ endDate })
   })
   if (!response.ok) throw new Error('Failed to end current cycle')
@@ -109,33 +126,44 @@ const generateMockHealthLogs = (): HealthLog[] => {
   return logs;
 };
 
-export const getHealthLogs = async (startDate?: string, endDate?: string): Promise<HealthLog[]> => {
-  try {
-    const params = new URLSearchParams();
-    if (startDate) params.append('startDate', startDate);
-    if (endDate) params.append('endDate', endDate);
-    
-    const response = await fetch(`${API_BASE}/logs?${params.toString()}`);
-    
-    if (!response.ok) {
-      console.warn('Health logs endpoint not available, using mock data');
-      return generateMockHealthLogs();
+export const getHealthLogs = async (startDate?: Date | string, endDate?: Date | string): Promise<HealthLog[]> => {
+  let url = `${API_BASE}/logs`
+  const params = new URLSearchParams()
+  
+  // Convert Date objects to ISO strings if needed
+  const formatDate = (date: Date | string): string => {
+    if (date instanceof Date) {
+      return date.toISOString().split('T')[0] // YYYY-MM-DD format
     }
-    
-    const logs = await response.json();
-    return logs;
-  } catch (error) {
-    console.warn('Error fetching health logs, using mock data:', error);
-    return generateMockHealthLogs();
+    return date
   }
+  
+  if (startDate) params.append('startDate', formatDate(startDate))
+  if (endDate) params.append('endDate', formatDate(endDate))
+  
+  if (params.toString()) {
+    url += `?${params.toString()}`
+  }
+  
+  const response = await fetch(url, {
+    headers: getAuthHeaders()
+  })
+  
+  if (!response.ok) {
+    // In development, return mock data if API fails
+    if (process.env.NODE_ENV === 'development') {
+      console.warn('Using mock health logs data')
+      return generateMockHealthLogs()
+    }
+    throw new Error('Failed to fetch health logs')
+  }
+  return response.json()
 };
 
 export const createHealthLog = async (log: Omit<HealthLog, 'id' | 'userId' | 'createdAt' | 'updatedAt'>): Promise<HealthLog> => {
   const response = await fetch(`${API_BASE}/logs`, {
     method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-    },
+    headers: getAuthHeaders(),
     body: JSON.stringify(log)
   })
   if (!response.ok) throw new Error('Failed to create health log')
@@ -145,9 +173,7 @@ export const createHealthLog = async (log: Omit<HealthLog, 'id' | 'userId' | 'cr
 export const updateHealthLog = async (id: string, updates: Partial<HealthLog>): Promise<HealthLog> => {
   const response = await fetch(`${API_BASE}/logs/${id}`, {
     method: 'PATCH',
-    headers: {
-      'Content-Type': 'application/json',
-    },
+    headers: getAuthHeaders(),
     body: JSON.stringify(updates)
   })
   if (!response.ok) throw new Error('Failed to update health log')
@@ -241,31 +267,38 @@ export interface CycleStats {
 }
 
 export const getCycleStats = async (): Promise<CycleStats> => {
-  try {
-    const response = await fetch(`${API_BASE}/stats`);
-    
-    if (!response.ok) {
-      console.warn('Stats endpoint not available, using default values');
-      // Return default stats when endpoint is not available
+  const response = await fetch(`${API_BASE}/stats`, {
+    headers: getAuthHeaders()
+  })
+  
+  if (!response.ok) {
+    // In development, return mock data if API fails
+    if (process.env.NODE_ENV === 'development') {
+      console.warn('Using mock stats data')
       return {
         averageCycleLength: 28,
         averagePeriodLength: 5,
-        lastPeriodStart: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString(), // 30 days ago
-        lastPeriodEnd: new Date(Date.now() - 25 * 24 * 60 * 60 * 1000).toISOString(), // 25 days ago
-        nextPeriodPrediction: new Date(Date.now() + 2 * 24 * 60 * 60 * 1000).toISOString() // 2 days from now
-      };
+        lastPeriodStart: new Date(Date.now() - 15 * 24 * 60 * 60 * 1000).toISOString(),
+        lastPeriodEnd: new Date(Date.now() - 11 * 24 * 60 * 60 * 1000).toISOString(),
+        nextPeriodPrediction: new Date(Date.now() + 13 * 24 * 60 * 60 * 1000).toISOString(),
+        cycleVariability: 2,
+        periodHistory: [
+          {
+            startDate: new Date(Date.now() - 45 * 24 * 60 * 60 * 1000).toISOString(),
+            endDate: new Date(Date.now() - 41 * 24 * 60 * 60 * 1000).toISOString(),
+            length: 5,
+            symptoms: ['cramps', 'headache']
+          },
+          {
+            startDate: new Date(Date.now() - 15 * 24 * 60 * 60 * 1000).toISOString(),
+            endDate: new Date(Date.now() - 11 * 24 * 60 * 60 * 1000).toISOString(),
+            length: 5,
+            symptoms: ['cramps']
+          }
+        ]
+      }
     }
-    
-    return response.json();
-  } catch (error) {
-    console.error('Error fetching cycle stats:', error);
-    // Return default values on error
-    return {
-      averageCycleLength: 28,
-      averagePeriodLength: 5,
-      lastPeriodStart: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString(),
-      lastPeriodEnd: new Date(Date.now() - 25 * 24 * 60 * 60 * 1000).toISOString(),
-      nextPeriodPrediction: new Date(Date.now() + 2 * 24 * 60 * 60 * 1000).toISOString()
-    };
+    throw new Error('Failed to fetch cycle stats')
   }
+  return response.json()
 }
