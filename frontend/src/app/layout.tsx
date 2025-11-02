@@ -1,10 +1,10 @@
 'use client';
 
-import type { Metadata } from "next";
 import { Inter } from "next/font/google";
 import { Header, Footer } from "@/components";
 import { AuthProvider } from "@/contexts/AuthContext";
 import { FirebaseCycleProvider } from "@/contexts/FirebaseCycleContext";
+import { SessionProvider } from "next-auth/react";
 import "./globals.css";
 
 const inter = Inter({
@@ -41,17 +41,19 @@ export default function RootLayout({
   return (
     <html lang="en" className="h-full bg-white">
       <body className={`${inter.variable} font-sans h-full`}>
-        <AuthProvider>
-          <FirebaseCycleProvider>
-            <div className="min-h-screen flex flex-col">
-              <Header />
-              <main className="flex-grow">
-                {children}
-              </main>
-              <Footer />
-            </div>
-          </FirebaseCycleProvider>
-        </AuthProvider>
+        <SessionProvider>
+          <AuthProvider>
+            <FirebaseCycleProvider>
+              <div className="min-h-screen flex flex-col">
+                <Header />
+                <main className="flex-grow">
+                  {children}
+                </main>
+                <Footer />
+              </div>
+            </FirebaseCycleProvider>
+          </AuthProvider>
+        </SessionProvider>
       </body>
     </html>
   );
