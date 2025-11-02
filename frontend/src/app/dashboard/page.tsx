@@ -20,7 +20,8 @@ import {
 // Import components
 import { 
   WelcomeHeader, 
-  QuickActions 
+  QuickActions,
+  AIInsightsPanel 
 } from './components';
 
 // Register ChartJS components
@@ -329,6 +330,17 @@ function DashboardPage(): JSX.Element | null {
 
           {/* Quick Actions */}
           <QuickActions />
+          
+          {/* AI Insights Panel */}
+          <AIInsightsPanel 
+            cycleData={{
+              cycleDay: cycleData.cycleDay,
+              cycleLength: cycleData.cycleLength,
+              periodLength: cycleData.periodLength,
+              nextPeriod: cycleData.nextPeriod
+            }}
+            healthLogs={[]}
+          />
         </div>
       </div>
     </div>
