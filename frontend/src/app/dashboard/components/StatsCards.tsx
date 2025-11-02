@@ -32,14 +32,11 @@ interface StatsCardsProps {
   nextPeriod: string | null;
   cycleLength: number;
   periodLength: number;
-  predictionConfidence?: 'low' | 'medium' | 'high';
   fertileWindow?: {
     start: string;
     end: string;
     ovulationDay: string;
   };
-  onRefreshPredictions?: () => void;
-  isPredicting?: boolean;
 }
 
 export const StatsCards: React.FC<StatsCardsProps> = ({
@@ -47,22 +44,8 @@ export const StatsCards: React.FC<StatsCardsProps> = ({
   nextPeriod,
   cycleLength,
   periodLength,
-  predictionConfidence = 'medium',
   fertileWindow,
-  onRefreshPredictions,
-  isPredicting = false,
 }) => {
-  const getConfidenceColor = () => {
-    switch (predictionConfidence) {
-      case 'high':
-        return 'text-green-500';
-      case 'medium':
-        return 'text-yellow-500';
-      default:
-        return 'text-red-500';
-    }
-  };
-
   const getDaysUntilNextPeriod = () => {
     if (!nextPeriod) return null;
     const today = new Date();
@@ -95,39 +78,11 @@ export const StatsCards: React.FC<StatsCardsProps> = ({
   };
 
   const fertilityStatus = getFertilityStatus();
-  const confidenceColor = getConfidenceColor();
   const daysUntilNextPeriod = getDaysUntilNextPeriod();
-  const cyclePhase = getCyclePhase(cycleDay, cycleLength);
 
   return (
     <div className="space-y-4">
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        <StatCard 
-          title="Cycle Day" 
-          value={
-            <div className="flex items-center">
-              <span>{cycleDay}</span>
-              <span className={`ml-2 px-2 py-0.5 text-xs rounded-full ${cyclePhase.color} ${cyclePhase.color.includes('text-') ? '' : 'text-gray-800'}`}>
-                {cyclePhase.name}
-              </span>
-            </div>
-          }
-          subtext={
-            <div className="mt-1">
-              <div className="w-full bg-gray-200 rounded-full h-1.5">
-                <div 
-                  className="bg-pink-500 h-1.5 rounded-full" 
-                  style={{ width: `${(cycleDay / cycleLength) * 100}%` }}
-                />
-              </div>
-              <div className="flex justify-between text-xs text-gray-500 mt-1">
-                <span>Day 1</span>
-                <span>Day {cycleLength}</span>
-              </div>
-            </div>
-          }
-        />
-        
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
         <StatCard 
           title="Next Period" 
           value={
@@ -141,20 +96,8 @@ export const StatsCards: React.FC<StatsCardsProps> = ({
             </div>
           }
           subtext={
-            <div className="flex items-center">
-              <span className={`inline-block w-2 h-2 rounded-full mr-1 ${confidenceColor}`}></span>
-              <span className={`text-xs ${confidenceColor} font-medium`}>
-                {predictionConfidence.charAt(0).toUpperCase() + predictionConfidence.slice(1)} confidence
-              </span>
-              {onRefreshPredictions && (
-                <button 
-                  onClick={onRefreshPredictions}
-                  disabled={isPredicting}
-                  className="ml-2 text-xs text-pink-600 hover:text-pink-800 disabled:opacity-50 flex items-center"
-                >
-                  {isPredicting ? 'Updating...' : 'Update'}
-                </button>
-              )}
+            <div className="h-4">
+              {/* Empty div to maintain consistent height */}
             </div>
           }
         />

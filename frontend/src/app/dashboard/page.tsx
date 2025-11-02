@@ -2,7 +2,6 @@
 
 import React, { useEffect, useMemo, useRef, useState, useLayoutEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import Link from 'next/link';
 import { useAuth } from '@/contexts/AuthContext';
 import { useFirebaseCycle } from '@/contexts/FirebaseCycleContext';
 import { format, addDays } from 'date-fns';
@@ -21,8 +20,6 @@ import {
 // Import components
 import { 
   WelcomeHeader, 
-  StatsCards, 
-  UpcomingEvents, 
   QuickActions 
 } from './components';
 
@@ -102,50 +99,19 @@ function DashboardPage(): JSX.Element | null {
   const router = useRouter();
 
   // states for stable rendering
-  const [mounted, setMounted] = useState(false); // true after client layout mount
-  const didRedirectRef = useRef(false);
+  const [mounted, setMounted] = useState(false);
   const [isRefreshing, setIsRefreshing] = useState(false);
 
-  // Chart container refs and size
-  const chartContainerRef = useRef<HTMLDivElement>(null);
-  const [chartSize, setChartSize] = useState({ width: 0, height: 300 });
-
-  // Update chart size on window resize
+  // Set mounted to true after component mounts
   useEffect(() => {
-    const handleResize = () => {
-      if (chartContainerRef.current) {
-        setChartSize({
-          width: chartContainerRef.current.offsetWidth,
-          height: 300,
-        });
-      }
-    };
-
-    handleResize();
-    window.addEventListener('resize', handleResize);
-    return () => window.removeEventListener('resize', handleResize);
-  }, []);
-
-  // combine loading
-  const loading = Boolean(authLoading) || Boolean(cycleLoading);
-
-  // ensure we only run redirect once and after mount+loading settled
-  useLayoutEffect(() => {
-    // mark client-mounted to avoid hydration mismatch
     setMounted(true);
   }, []);
 
-  useEffect(() => {
-    // wait until loaders finished and we are mounted
-    if (!mounted) return;
-    if (authLoading || cycleLoading) return;
+  // Chart container refs and size
+  const chartContainerRef = useRef<HTMLDivElement>(null);
 
-    if (!user && !didRedirectRef.current) {
-      didRedirectRef.current = true;
-      // use replace to avoid back-button weirdness
-      router.replace('/login');
-    }
-  }, [authLoading, cycleLoading, user, router, mounted]);
+  // combine loading
+  const loading = Boolean(authLoading) || Boolean(cycleLoading);
 
   // Compute cycle data (memoized)
   const cycleData = useMemo(() => {
@@ -315,31 +281,6 @@ function DashboardPage(): JSX.Element | null {
     };
   }, [healthLogs]);
 
-  // Chart options: responsive false + animation disabled (stable)
-  const chartOptions = useMemo(
-    () => ({
-      responsive: true,
-      maintainAspectRatio: false,
-      animation: {
-        duration: 1000,
-        easing: 'easeInOutQuart' as const, // Use const assertion for literal type
-      },
-      plugins: {
-        legend: { position: 'top' as const },
-        tooltip: { mode: 'index' as const, intersect: false },
-        title: { display: true, text: 'Mood and Energy Trends' },
-      },
-      scales: {
-        y: {
-          min: 1,
-          max: 5,
-          ticks: { stepSize: 1 },
-        },
-      },
-    }),
-    []
-  );
-
   // Refresh handler - single-shot debounced
   const handleRefresh = async () => {
     if (isRefreshing) return;
@@ -375,30 +316,19 @@ function DashboardPage(): JSX.Element | null {
   return (
     <div className="min-h-screen bg-gradient-to-br from-pink-50 via-white to-purple-50 p-4">
       <div className="max-w-7xl mx-auto">
-        {/* Welcome Header */}
-        <WelcomeHeader 
-          userName={user?.email?.split('@')[0] || 'User'}
-          cyclePhase={cycleData.cyclePhase}
-          cycleDay={cycleData.cycleDay}
-          cycleLength={cycleData.cycleLength}
-          onRefresh={handleRefresh}
-          isRefreshing={isRefreshing}
-        />
+        <div className="space-y-6">
+          {/* Welcome Header */}
+          <WelcomeHeader 
+            userName={user?.email?.split('@')[0] || 'User'}
+            cyclePhase={cycleData.cyclePhase}
+            cycleDay={cycleData.cycleDay}
+            cycleLength={cycleData.cycleLength}
+            onRefresh={handleRefresh}
+            isRefreshing={isRefreshing}
+          />
 
-        {/* Stats Cards */}
-        <StatsCards 
-          cycleDay={cycleData.cycleDay}
-          nextPeriod={cycleData.nextPeriod}
-          cycleLength={cycleData.cycleLength}
-          periodLength={cycleData.periodLength}
-        />
-
-        {/* Right Sidebar */}
-        <div className="grid grid-cols-1 lg:grid-cols-1 gap-6 mb-6">
-          <div className="space-y-6">
-            <UpcomingEvents events={upcomingEvents} />
-            <QuickActions />
-          </div>
+          {/* Quick Actions */}
+          <QuickActions />
         </div>
       </div>
     </div>
