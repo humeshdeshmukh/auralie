@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import { format } from 'date-fns';
 import { Check, Plus, X } from 'lucide-react';
 import { SymptomType, FertilityEntry } from '../types';
@@ -21,175 +21,190 @@ const SYMPTOMS: SymptomType[] = [
   { id: 'anxiety', name: 'Anxiety', icon: '😰', category: 'emotional' },
   { id: 'irritability', name: 'Irritability', icon: '😠', category: 'emotional' },
   { id: 'insomnia', name: 'Insomnia', icon: '🌙', category: 'physical' },
-  { id: 'food_craving', name: 'Food Cravings', icon: '🍫', category: 'physical' },
+  { id: 'food_craving', name: 'Food Cravings', icon: '🍫', category: 'physical' }
 ];
 
 interface SymptomTrackerProps {
   selectedDate: Date;
   entry: FertilityEntry | null;
-  onSave: (data: Partial<FertilityEntry>) => void;
+  onSave: (data: Partial<FertilityEntry>) => Promise<void> | void;
 }
 
 export default function SymptomTracker({ selectedDate, entry, onSave }: SymptomTrackerProps) {
-  const [selectedSymptoms, setSelectedSymptoms] = useState<Set<string>>(
-    new Set(entry?.symptoms || [])
-  );
+  // store values as arrays/primitive for stable renders
+  const [selectedSymptoms, setSelectedSymptoms] = useState<string[]>(entry?.symptoms || []);
   const [mood, setMood] = useState<number | undefined>(entry?.mood);
-  const [temperature, setTemperature] = useState<number | undefined>(
-    entry?.basalBodyTemp
-  );
+  const [temperature, setTemperature] = useState<number | undefined>(entry?.basalBodyTemp);
   const [notes, setNotes] = useState(entry?.notes || '');
   const [showCustomSymptom, setShowCustomSymptom] = useState(false);
   const [customSymptom, setCustomSymptom] = useState('');
   const [customSymptoms, setCustomSymptoms] = useState<SymptomType[]>([]);
+  const [saving, setSaving] = useState(false);
+  const [savedAt, setSavedAt] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     if (entry) {
-      setSelectedSymptoms(new Set(entry.symptoms || []));
+      setSelectedSymptoms(Array.isArray(entry.symptoms) ? [...entry.symptoms] : []);
       setMood(entry.mood);
       setTemperature(entry.basalBodyTemp);
       setNotes(entry.notes || '');
     } else {
-      setSelectedSymptoms(new Set());
+      setSelectedSymptoms([]);
       setMood(undefined);
       setTemperature(undefined);
       setNotes('');
     }
-  }, [entry]);
+    setSavedAt(null);
+    setError(null);
+  }, [entry, selectedDate]);
 
   const toggleSymptom = (symptomId: string) => {
-    const newSelected = new Set(selectedSymptoms);
-    if (newSelected.has(symptomId)) {
-      newSelected.delete(symptomId);
-    } else {
-      newSelected.add(symptomId);
-    }
-    setSelectedSymptoms(newSelected);
-  };
-
-  const handleSave = () => {
-    onSave({
-      date: selectedDate.toISOString(),
-      symptoms: Array.from(selectedSymptoms),
-      mood,
-      basalBodyTemp: temperature,
-      notes: notes.trim() || undefined,
-    });
+    setSelectedSymptoms(prev => (prev.includes(symptomId) ? prev.filter(s => s !== symptomId) : [...prev, symptomId]));
   };
 
   const addCustomSymptom = () => {
-    if (customSymptom.trim()) {
-      const newSymptom: SymptomType = {
-        id: customSymptom.toLowerCase().replace(/\s+/g, '_'),
-        name: customSymptom.trim(),
-        icon: '➕',
-        category: 'other',
-      };
-      setCustomSymptoms([...customSymptoms, newSymptom]);
+    const trimmed = customSymptom.trim();
+    if (!trimmed) return;
+    const id = trimmed.toLowerCase().replace(/[^a-z0-9]+/g, '_');
+    if ([...SYMPTOMS, ...customSymptoms].some(s => s.id === id)) {
       setCustomSymptom('');
       setShowCustomSymptom(false);
+      return;
+    }
+    const newSymptom: SymptomType = { id, name: trimmed, icon: '➕', category: 'other' };
+    setCustomSymptoms(prev => [...prev, newSymptom]);
+    setSelectedSymptoms(prev => [...prev, id]);
+    setCustomSymptom('');
+    setShowCustomSymptom(false);
+  };
+
+  const handleSave = async () => {
+    setError(null);
+    setSaving(true);
+    try {
+      const payload: Partial<FertilityEntry> = {
+        date: selectedDate.toISOString(),
+        symptoms: selectedSymptoms,
+        mood,
+        basalBodyTemp: temperature,
+        notes: notes.trim() || undefined
+      };
+      await Promise.resolve(onSave(payload));
+      setSavedAt(new Date().toISOString());
+    } catch (err: any) {
+      setError(err?.message || 'Save failed');
+    } finally {
+      setSaving(false);
     }
   };
 
   const allSymptoms = [...SYMPTOMS, ...customSymptoms];
-  const symptomsByCategory = allSymptoms.reduce<Record<string, SymptomType[]>>(
-    (acc, symptom) => {
-      if (!acc[symptom.category]) {
-        acc[symptom.category] = [];
-      }
-      acc[symptom.category].push(symptom);
-      return acc;
-    },
-    {}
-  );
+  const symptomsByCategory = allSymptoms.reduce<Record<string, SymptomType[]>>((acc, s) => {
+    acc[s.category] = acc[s.category] || [];
+    acc[s.category].push(s);
+    return acc;
+  }, {});
+
+  // helper: map symptom id -> display name
+  const idToName = (id: string) => {
+    const found = allSymptoms.find(s => s.id === id);
+    return found ? found.name : id;
+  };
 
   return (
-    <div className="bg-white rounded-xl shadow-sm p-6">
-      <div className="flex justify-between items-center mb-6">
-        <h3 className="text-lg font-semibold text-gray-900">
-          {format(selectedDate, 'MMMM d, yyyy')}
-        </h3>
-        <button
-          onClick={handleSave}
-          className="px-4 py-2 bg-primary text-white rounded-lg hover:bg-primary-dark transition-colors flex items-center"
-        >
-          <Check className="w-4 h-4 mr-2" />
-          Save
-        </button>
+    <div className="bg-white rounded-2xl shadow-lg p-6 max-w-3xl mx-auto border border-gray-100">
+      <div className="flex items-start justify-between gap-4 mb-6">
+        <div>
+          <h2 className="text-2xl font-semibold text-black">{format(selectedDate, 'MMMM d, yyyy')}</h2>
+          <p className="mt-1 text-sm text-gray-600 max-w-lg">Log symptoms, mood and temperature for the selected day.</p>
+        </div>
+
+        <div className="flex flex-col items-end gap-2">
+          <button
+            onClick={handleSave}
+            disabled={saving}
+            className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-primary text-white hover:opacity-95 focus:outline-none focus:ring-2 focus:ring-primary/40"
+            aria-label="Save entry"
+          >
+            <Check className="w-4 h-4" />
+            <span className="font-medium">{saving ? 'Saving...' : 'Save'}</span>
+          </button>
+
+          <div className="text-xs text-gray-500">{selectedSymptoms.length} symptoms</div>
+          {savedAt && <div className="text-xs text-green-600">Saved at {format(new Date(savedAt), 'hh:mm a')}</div>}
+          {error && <div className="text-xs text-red-600">Error: {error}</div>}
+        </div>
       </div>
 
-      <div className="mb-6">
-        <h4 className="text-sm font-medium text-gray-700 mb-2">Mood</h4>
-        <div className="flex justify-between">
+      {/* Mood */}
+      <section className="mb-6">
+        <h3 className="text-sm font-medium text-gray-700 mb-3">Mood</h3>
+        <div className="flex items-center gap-3">
           {[1, 2, 3, 4, 5].map((level) => (
             <button
               key={level}
               onClick={() => setMood(level)}
-              className={`w-10 h-10 rounded-full flex items-center justify-center text-xl ${
-                mood === level ? 'bg-primary text-white' : 'bg-gray-100 hover:bg-gray-200'
-              }`}
+              aria-pressed={mood === level}
               aria-label={`Mood level ${level}`}
+              className={`w-12 h-12 md:w-14 md:h-14 rounded-full flex items-center justify-center text-2xl shadow-sm transition-shadow focus:outline-none focus:ring-2 ${
+                mood === level ? 'bg-primary text-white ring-primary/50' : 'bg-gray-100 hover:bg-gray-200'
+              }`}
             >
               {['😢', '🙁', '😐', '🙂', '😊'][level - 1]}
             </button>
           ))}
-        </div>
-      </div>
 
-      <div className="mb-6">
-        <label className="block text-sm font-medium text-gray-700 mb-2">
-          Basal Body Temperature (°C)
-        </label>
+          <div className="ml-4 text-sm text-gray-600">
+            <div className="font-medium text-black">Selected mood</div>
+            <div className="text-xs text-black">{mood ? ['Very low','Low','Neutral','Good','Great'][mood - 1] : 'Not set'}</div>
+          </div>
+        </div>
+      </section>
+
+      {/* Temperature */}
+      <section className="mb-6">
+        <label className="block text-sm font-medium text-gray-700 mb-2">Basal Body Temperature (°C)</label>
         <input
           type="number"
           step="0.1"
-          min="35"
-          max="40"
-          value={temperature || ''}
+          min="30"
+          max="45"
+          value={temperature ?? ''}
           onChange={(e) => setTemperature(e.target.value ? parseFloat(e.target.value) : undefined)}
-          className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-primary focus:border-transparent"
+          className="w-40 px-3 py-2 border border-gray-300 rounded-md text-black text-lg focus:outline-none focus:ring-2 focus:ring-primary/30"
           placeholder="e.g. 36.5"
+          aria-label="Basal body temperature"
         />
-      </div>
+        <p className="mt-2 text-xs text-gray-500">Tip: measure first thing in the morning for consistency.</p>
+      </section>
 
-      <div className="mb-6">
-        <div className="flex justify-between items-center mb-2">
-          <h4 className="text-sm font-medium text-gray-700">Symptoms</h4>
+      {/* Symptoms */}
+      <section className="mb-6">
+        <div className="flex items-center justify-between mb-3">
+          <h3 className="text-sm font-medium text-gray-700">Symptoms</h3>
+
           {!showCustomSymptom ? (
             <button
               onClick={() => setShowCustomSymptom(true)}
-              className="text-sm text-primary hover:text-primary-dark flex items-center"
+              className="inline-flex items-center gap-2 text-sm text-primary hover:underline focus:outline-none"
+              aria-expanded={showCustomSymptom}
             >
-              <Plus className="w-4 h-4 mr-1" />
-              Add Custom
+              <Plus className="w-4 h-4" />
+              Add custom
             </button>
           ) : (
-            <div className="flex space-x-2">
+            <div className="flex items-center gap-2">
               <input
                 type="text"
                 value={customSymptom}
                 onChange={(e) => setCustomSymptom(e.target.value)}
-                placeholder="Enter symptom name"
-                className="text-sm border-b border-gray-300 focus:outline-none focus:border-primary"
-                autoFocus
+                placeholder="New symptom"
+                className="px-2 py-1 border-b border-gray-300 focus:outline-none text-black"
+                aria-label="Custom symptom"
               />
-              <button
-                onClick={addCustomSymptom}
-                className="text-green-600 hover:text-green-800"
-                aria-label="Add symptom"
-              >
-                <Check className="w-4 h-4" />
-              </button>
-              <button
-                onClick={() => {
-                  setShowCustomSymptom(false);
-                  setCustomSymptom('');
-                }}
-                className="text-red-600 hover:text-red-800"
-                aria-label="Cancel"
-              >
-                <X className="w-4 h-4" />
-              </button>
+              <button onClick={addCustomSymptom} className="text-green-600" aria-label="Add custom symptom"><Check /></button>
+              <button onClick={() => { setShowCustomSymptom(false); setCustomSymptom(''); }} className="text-red-600" aria-label="Cancel custom symptom"><X /></button>
             </div>
           )}
         </div>
@@ -197,41 +212,69 @@ export default function SymptomTracker({ selectedDate, entry, onSave }: SymptomT
         <div className="space-y-4">
           {Object.entries(symptomsByCategory).map(([category, symptoms]) => (
             <div key={category}>
-              <h5 className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-2">
-                {category}
-              </h5>
-              <div className="flex flex-wrap gap-2">
-                {symptoms.map((symptom) => (
-                  <button
-                    key={symptom.id}
-                    onClick={() => toggleSymptom(symptom.id)}
-                    className={`px-3 py-1.5 rounded-full text-sm flex items-center ${
-                      selectedSymptoms.has(symptom.id)
-                        ? 'bg-primary text-white'
-                        : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-                    }`}
-                  >
-                    <span className="mr-1.5">{symptom.icon}</span>
-                    {symptom.name}
-                  </button>
-                ))}
+              <h4 className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">{category}</h4>
+              <div className="flex flex-wrap gap-3">
+                {symptoms.map((symptom) => {
+                  const active = selectedSymptoms.includes(symptom.id);
+                  return (
+                    <button
+                      key={symptom.id}
+                      onClick={() => toggleSymptom(symptom.id)}
+                      className={`flex items-center gap-2 px-3 py-2 rounded-full text-sm transition focus:outline-none focus:ring-2 ${
+                        active ? 'bg-primary text-black shadow' : 'bg-gray-100 text-black hover:bg-gray-200'
+                      }`}
+                      aria-pressed={active}
+                    >
+                      <span className="text-lg">{symptom.icon}</span>
+                      <span className="font-medium text-black">{symptom.name}</span>
+                    </button>
+                  );
+                })}
               </div>
             </div>
           ))}
         </div>
-      </div>
+      </section>
 
-      <div>
-        <label className="block text-sm font-medium text-gray-700 mb-2">
-          Notes
-        </label>
+      {/* Notes */}
+      <section className="mb-6">
+        <label className="block text-sm font-medium text-gray-700 mb-2">Notes</label>
         <textarea
           value={notes}
           onChange={(e) => setNotes(e.target.value)}
-          className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-primary focus:border-transparent h-24"
-          placeholder="Add any additional notes about your day..."
+          rows={4}
+          placeholder="Add any details about your symptoms or day..."
+          className="w-full px-3 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary/30 text-black text-sm"
+          aria-label="Notes"
         />
-      </div>
+      </section>
+
+      {/* LIVE PREVIEW */}
+      {/* <section className="bg-gray-50 border border-gray-100 p-3 rounded-lg text-sm">
+        <div className="flex items-center justify-between mb-2">
+          <div className="text-xs text-gray-500">Preview (local state)</div>
+          <div className="text-xs text-gray-400">This shows what will be saved</div>
+        </div>
+
+        <div className="grid grid-cols-2 gap-2 text-xs md:text-sm text-black">
+          <div>
+            <div className="font-medium text-black">Mood</div>
+            <div className="text-black">{mood ? ['Very low','Low','Neutral','Good','Great'][mood - 1] : '—'}</div>
+          </div>
+          <div>
+            <div className="font-medium text-black">Temp</div>
+            <div className="text-black">{typeof temperature === 'number' ? `${temperature.toFixed(1)}°C` : '—'}</div>
+          </div>
+          <div className="col-span-2">
+            <div className="font-medium text-black">Symptoms</div>
+            <div className="text-black">{selectedSymptoms.length ? selectedSymptoms.map(id => idToName(id)).join(', ') : '—'}</div>
+          </div>
+          <div className="col-span-2">
+            <div className="font-medium text-black">Notes</div>
+            <div className="whitespace-pre-wrap text-black">{notes || '—'}</div>
+          </div>
+        </div>
+      </section> */}
     </div>
   );
 }

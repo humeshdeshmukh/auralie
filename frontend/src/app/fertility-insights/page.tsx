@@ -1,124 +1,68 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useAuth } from '@/context/AuthContext';
 import { useRouter } from 'next/navigation';
-import { format, addDays, startOfDay, isToday } from 'date-fns';
+import { format, addDays, startOfDay } from 'date-fns';
 import { Loader2 } from 'lucide-react';
 import CycleCalendar from './components/CycleCalendar';
 import SymptomTracker from './components/SymptomTracker';
+import AIInsights from './components/AIInsights';
+import Statistics from './components/Statistics';
+import HealthLog from './components/HealthLog';
 import { generateFertilityInsights, analyzeSymptomPatterns } from './lib/geminiService';
-import { FertilityEntry, FertilityStats, CycleDay, FertilityInsight } from './types';
+import { FertilityEntry, FertilityStats, FertilityInsight } from './types';
 
-// Mock data - Replace with actual API calls
-const MOCK_ENTRIES: FertilityEntry[] = [
-  {
-    id: '1',
-    userId: 'user1',
-    date: format(addDays(new Date(), -5), 'yyyy-MM-dd'),
-    symptoms: ['cramps', 'bloating'],
-    mood: 2,
-    basalBodyTemp: 36.5,
-    notes: 'Moderate cramps today',
-    flowLevel: 'medium',
-  },
-  {
-    id: '2',
-    userId: 'user1',
-    date: format(addDays(new Date(), -4), 'yyyy-MM-dd'),
-    symptoms: ['bloating'],
-    mood: 3,
-    basalBodyTemp: 36.6,
-    flowLevel: 'light',
-  },
-  {
-    id: '3',
-    userId: 'user1',
-    date: format(addDays(new Date(), -3), 'yyyy-MM-dd'),
-    symptoms: ['cervical_mucus'],
-    mood: 4,
-    basalBodyTemp: 36.7,
-    flowLevel: 'spotting',
-  },
-];
+/**
+ * NOTE:
+ * - Replace fetch stubs with real API calls.
+ * - computeStatsFromEntries() is a small helper here to produce sensible stats; replace with
+ *   your server-side computation if available.
+ */
 
-const MOCK_STATS: FertilityStats = {
-  cycleLength: 28,
-  periodLength: 5,
-  ovulationDay: 14,
-  fertileWindow: {
-    start: 10,
-    end: 16,
-  },
-  nextPeriod: format(addDays(new Date(), 14), 'yyyy-MM-dd'),
-  nextOvulation: format(addDays(new Date(), 5), 'yyyy-MM-dd'),
-  pregnancyTestDay: format(addDays(new Date(), 28), 'yyyy-MM-dd'),
-  currentCycleDay: 14,
-  isFertileWindow: true,
-  phase: 'ovulation',
-};
+// Helper: compute basic stats from entries (lightweight fallback)
+function computeStatsFromEntries(entries: FertilityEntry[]): FertilityStats {
+  // Default sensible values
+  const cycleLength = 28;
+  const periodLength = 5;
+  const ovulationDay = 14;
+  const fertileWindow = { start: 10, end: 16 };
+  const nextPeriod = format(addDays(new Date(), cycleLength), 'yyyy-MM-dd');
+  const nextOvulation = format(addDays(new Date(), 7), 'yyyy-MM-dd');
+  const pregnancyTestDay = format(addDays(new Date(), cycleLength * 2), 'yyyy-MM-dd');
+  const currentCycleDay = entries.length ? 1 : 1;
+
+  return {
+    cycleLength,
+    periodLength,
+    ovulationDay,
+    fertileWindow,
+    nextPeriod,
+    nextOvulation,
+    pregnancyTestDay,
+    currentCycleDay,
+    isFertileWindow: false,
+    phase: 'unknown'
+  } as FertilityStats;
+}
 
 export default function FertilityInsightsPage() {
   const { currentUser } = useAuth();
   const router = useRouter();
+
   const [selectedDate, setSelectedDate] = useState<Date>(new Date());
-  const [entries, setEntries] = useState<FertilityEntry[]>(MOCK_ENTRIES);
-  const [stats, setStats] = useState<FertilityStats>(MOCK_STATS);
-  const [isLoading, setIsLoading] = useState(true);
+  const [entries, setEntries] = useState<FertilityEntry[]>([]); // start empty, load real data
+  const [stats, setStats] = useState<FertilityStats>(() => computeStatsFromEntries([]));
+  const [isLoading, setIsLoading] = useState<boolean>(true);
   const [insights, setInsights] = useState<FertilityInsight | null>(null);
   const [activeTab, setActiveTab] = useState<'tracker' | 'insights' | 'stats'>('tracker');
   const [symptomAnalysis, setSymptomAnalysis] = useState<string>('');
   const [isGeneratingInsights, setIsGeneratingInsights] = useState(false);
 
-  // Rate limiting for insights generation
   const [lastGenerationTime, setLastGenerationTime] = useState<number>(0);
-  const RATE_LIMIT_MS = 30000; // 30 seconds cooldown
+  const RATE_LIMIT_MS = 30000; // 30s
 
-  const generateInsights = async () => {
-    const now = Date.now();
-    const timeSinceLastGeneration = now - lastGenerationTime;
-    
-    // Check rate limit
-    if (timeSinceLastGeneration < RATE_LIMIT_MS) {
-      const timeLeft = Math.ceil((RATE_LIMIT_MS - timeSinceLastGeneration) / 1000);
-      alert(`Please wait ${timeLeft} seconds before generating new insights.`);
-      return;
-    }
-
-    try {
-      setIsGeneratingInsights(true);
-      setLastGenerationTime(now);
-      
-      // Generate AI insights
-      const aiInsights = await generateFertilityInsights(entries, stats);
-      setInsights(aiInsights);
-      
-      // Analyze symptom patterns
-      const analysis = await analyzeSymptomPatterns(entries);
-      setSymptomAnalysis(analysis);
-    } catch (error) {
-      console.error('Error generating insights:', error);
-      // Set a default error message that matches the FertilityInsight type
-      setInsights({
-        analysis: 'Failed to generate insights. Please try again later.',
-        recommendations: ['Check your internet connection and try again.'],
-        fertilityWindow: {
-          start: 0,
-          end: 0,
-          isFertile: false
-        },
-        ovulationPrediction: {
-          date: '',
-          confidence: 0
-        },
-        symptomsAnalysis: 'Unable to analyze symptoms due to an error.'
-      });
-    } finally {
-      setIsGeneratingInsights(false);
-    }
-  };
-
-  // Load user data on mount
+  // Load user data (entries + stats) from backend on mount
   useEffect(() => {
     if (!currentUser) {
       router.push('/login?redirect=/fertility-insights');
@@ -126,12 +70,24 @@ export default function FertilityInsightsPage() {
     }
 
     const loadData = async () => {
+      setIsLoading(true);
       try {
-        // TODO: Replace with actual API calls
-        await new Promise(resolve => setTimeout(resolve, 1000));
-        setIsLoading(false);
-      } catch (error) {
-        console.error('Error loading data:', error);
+        // TODO: replace with real API calls
+        // Example:
+        // const fetchedEntries = await api.get('/entries');
+        // const fetchedStats = await api.get('/stats');
+        // setEntries(fetchedEntries);
+        // setStats(fetchedStats);
+        
+        // Simulate API call
+        await new Promise((resolve) => setTimeout(resolve, 700));
+        
+        // Start with empty entries or fetch real ones
+        setEntries([]);
+        setStats(computeStatsFromEntries([]));
+      } catch (err) {
+        console.error('Failed to load fertility data', err);
+      } finally {
         setIsLoading(false);
       }
     };
@@ -139,50 +95,152 @@ export default function FertilityInsightsPage() {
     loadData();
   }, [currentUser, router]);
 
-  const handleDateSelect = (date: Date) => {
-    setSelectedDate(date);
-  };
+  const generateInsights = async () => {
+    const now = Date.now();
+    if (now - lastGenerationTime < RATE_LIMIT_MS) {
+      const timeLeft = Math.ceil((RATE_LIMIT_MS - (now - lastGenerationTime)) / 1000);
+      alert(`Please wait ${timeLeft}s before generating new insights.`);
+      return;
+    }
 
-  const handleSaveEntry = async (data: Partial<FertilityEntry>) => {
+    setIsGeneratingInsights(true);
+    setLastGenerationTime(now);
     try {
-      setIsLoading(true);
-      // TODO: Replace with actual API call
-      await new Promise(resolve => setTimeout(resolve, 500));
+      const [aiInsights, analysis] = await Promise.all([
+        generateFertilityInsights(entries, stats),
+        analyzeSymptomPatterns(entries)
+      ]);
       
-      const existingEntryIndex = entries.findIndex(e => 
-        format(new Date(e.date), 'yyyy-MM-dd') === format(data.date as string, 'yyyy-MM-dd')
-      );
-      
-      let updatedEntries;
-      if (existingEntryIndex >= 0) {
-        updatedEntries = [...entries];
-        updatedEntries[existingEntryIndex] = { ...updatedEntries[existingEntryIndex], ...data } as FertilityEntry;
-      } else {
-        updatedEntries = [...entries, { ...data, id: `entry-${Date.now()}` } as FertilityEntry];
-      }
-      
-      setEntries(updatedEntries);
-      
-      // Regenerate insights with updated data
-      const aiInsights = await generateFertilityInsights(updatedEntries, stats);
       setInsights(aiInsights);
-      
-      const analysis = await analyzeSymptomPatterns(updatedEntries);
       setSymptomAnalysis(analysis);
       
+      // Navigate to insights tab
+      setActiveTab('insights');
+      router.push('/fertility-insights?tab=insights');
+    } catch (err) {
+      console.error('Error generating insights', err);
+      setInsights({
+        analysis: 'Failed to generate insights. Please try again later.',
+        recommendations: ['Check your internet connection and try again.'],
+        fertilityWindow: { 
+          start: '0', 
+          end: '0', 
+          confidence: 'low' as const 
+        },
+        ovulationPrediction: { 
+          date: '', 
+          confidence: 'low' as const 
+        },
+        symptomsAnalysis: {
+          'no-symptoms': {
+            pattern: 'No symptom patterns detected',
+            correlation: 'No significant correlations found'
+          }
+        }
+      });
+    } finally {
+      setIsGeneratingInsights(false);
+    }
+  };
+
+  // Normalize date for equality: yyyy-MM-dd
+  const dateKey = (d: Date | string) => format(new Date(d), 'yyyy-MM-dd');
+
+  // Called by SymptomTracker
+  const handleSaveEntry = async (data: Partial<FertilityEntry>) => {
+    setIsLoading(true);
+    let incomingDateKey = '';
+    
+    try {
+      // Normalize incoming date
+      incomingDateKey = dateKey(data.date!);
+
+      // If parent back-end save exists, call it here:
+      // Example:
+      // const saved = await api.post('/entries', payload);
+      // For now we simulate and perform optimistic update.
+      await Promise.resolve(); // placeholder if onSave is async
+
+      // Update local entries (create or update)
+      setEntries(prev => {
+        const newEntries = [...prev];
+        const idx = newEntries.findIndex(e => dateKey(e.date) === incomingDateKey);
+        
+        if (idx >= 0) {
+          newEntries[idx] = { ...newEntries[idx], ...data } as FertilityEntry;
+        } else {
+          const newEntry: FertilityEntry = {
+            id: `entry-${Date.now()}`,
+            userId: currentUser?.id || 'me',
+            date: incomingDateKey,
+            symptoms: data.symptoms || [],
+            mood: data.mood,
+            basalBodyTemp: data.basalBodyTemp,
+            notes: data.notes,
+            flowLevel: (data as any).flowLevel || 'none'
+          };
+          newEntries.push(newEntry);
+        }
+        
+        return newEntries;
+      });
+
+      // After saving, switch to the statistics tab
+      setActiveTab('stats');
+
+      // Recompute stats (replace with server-side result if available)
+      setStats(prevStats => {
+        const newEntries = [...entries];
+        const idx = newEntries.findIndex(e => dateKey(e.date) === incomingDateKey);
+        
+        if (idx >= 0) {
+          newEntries[idx] = { ...newEntries[idx], ...data } as FertilityEntry;
+        } else {
+          const newEntry: FertilityEntry = {
+            id: `entry-${Date.now()}`,
+            userId: currentUser?.id || 'me',
+            date: incomingDateKey,
+            symptoms: data.symptoms || [],
+            mood: data.mood,
+            basalBodyTemp: data.basalBodyTemp,
+            notes: data.notes,
+            flowLevel: (data as any).flowLevel || 'none'
+          };
+          newEntries.push(newEntry);
+        }
+        
+        return { ...prevStats, ...computeStatsFromEntries(newEntries) };
+      });
+
+      // Update insights if we have enough data
+      if (entries.length >= 2) {
+        const recentEntries = [...entries, { ...data, date: incomingDateKey } as FertilityEntry]
+          .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
+          .slice(0, 3);
+        
+        setInsights(prev => ({
+          ...prev,
+          lastUpdated: new Date().toISOString(),
+          cycleAnalysis: `Analyzed ${recentEntries.length} recent entries`
+        }));
+      }
     } catch (error) {
       console.error('Error saving entry:', error);
+      // Handle error (e.g., show toast notification)
+      alert('Failed to save entry. Please try again.');
     } finally {
       setIsLoading(false);
     }
   };
 
+  const handleDateSelect = (date: Date) => {
+    // keep at startOfDay so SymptomTracker receives a normalized date
+    setSelectedDate(startOfDay(date));
+  };
+
   const getCurrentEntry = (): FertilityEntry | null => {
-    return (
-      entries.find(
-        (e) => format(new Date(e.date), 'yyyy-MM-dd') === format(selectedDate, 'yyyy-MM-dd')
-      ) || null
-    );
+    const key = dateKey(selectedDate);
+    return entries.find(e => dateKey(e.date) === key) || null;
   };
 
   if (isLoading) {
@@ -207,16 +265,11 @@ export default function FertilityInsightsPage() {
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           {/* Left Column - Calendar */}
           <div className="lg:col-span-1">
-            <CycleCalendar
-              entries={entries}
-              stats={stats}
-              selectedDate={selectedDate}
-              onDateSelect={handleDateSelect}
-            />
-            
+            <CycleCalendar entries={entries} stats={stats} selectedDate={selectedDate} onDateSelect={handleDateSelect} />
+
             <div className="mt-6 bg-white rounded-xl shadow-sm p-4">
               <h3 className="text-lg font-semibold text-gray-900 mb-4">Cycle Summary</h3>
-              <div className="space-y-3">
+              <div className="space-y-3 text-sm">
                 <div className="flex justify-between">
                   <span className="text-gray-600">Current Phase:</span>
                   <span className="font-medium capitalize">{stats.phase}</span>
@@ -228,17 +281,12 @@ export default function FertilityInsightsPage() {
                 <div className="flex justify-between">
                   <span className="text-gray-600">Next Period:</span>
                   <span className="font-medium">
-                    {format(new Date(stats.nextPeriod), 'MMM d')} 
-                    <span className="text-sm text-gray-500 ml-1">
-                      ({Math.ceil((new Date(stats.nextPeriod).getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24))} days)
-                    </span>
+                    {stats.nextPeriod ? format(new Date(stats.nextPeriod), 'MMM d') : '—'}
                   </span>
                 </div>
                 {stats.isFertileWindow && (
                   <div className="mt-4 p-3 bg-purple-50 rounded-lg">
-                    <p className="text-sm text-purple-800 font-medium">
-                      🌸 You're in your fertile window! Perfect time to try to conceive.
-                    </p>
+                    <p className="text-sm text-purple-800 font-medium">🌸 You're in your fertile window!</p>
                   </div>
                 )}
               </div>
@@ -247,173 +295,56 @@ export default function FertilityInsightsPage() {
 
           {/* Middle Column - Tracker/Insights */}
           <div className="lg:col-span-2 space-y-6">
-            {/* Tabs */}
             <div className="bg-white rounded-xl shadow-sm overflow-hidden">
               <div className="flex border-b border-gray-200">
-                <button
-                  onClick={() => setActiveTab('tracker')}
-                  className={`px-6 py-3 text-sm font-medium ${activeTab === 'tracker' ? 'text-primary border-b-2 border-primary' : 'text-gray-500 hover:text-gray-700'}`}
+                <button 
+                  onClick={() => setActiveTab('tracker')} 
+                  className={`px-6 py-3 text-sm font-medium ${
+                    activeTab === 'tracker' 
+                      ? 'text-primary border-b-2 border-primary' 
+                      : 'text-gray-500 hover:text-gray-700'
+                  }`}
                 >
                   Daily Tracker
                 </button>
-                <button
-                  onClick={() => setActiveTab('insights')}
-                  className={`px-6 py-3 text-sm font-medium ${activeTab === 'insights' ? 'text-primary border-b-2 border-primary' : 'text-gray-500 hover:text-gray-700'}`}
+                <button 
+                  onClick={() => setActiveTab('insights')} 
+                  className={`px-6 py-3 text-sm font-medium ${
+                    activeTab === 'insights' 
+                      ? 'text-primary border-b-2 border-primary' 
+                      : 'text-gray-500 hover:text-gray-700'
+                  }`}
                 >
                   AI Insights
                 </button>
-                <button
-                  onClick={() => setActiveTab('stats')}
-                  className={`px-6 py-3 text-sm font-medium ${activeTab === 'stats' ? 'text-primary border-b-2 border-primary' : 'text-gray-500 hover:text-gray-700'}`}
+                <button 
+                  onClick={() => setActiveTab('stats')} 
+                  className={`px-6 py-3 text-sm font-medium ${
+                    activeTab === 'stats' 
+                      ? 'text-primary border-b-2 border-primary' 
+                      : 'text-gray-500 hover:text-gray-700'
+                  }`}
                 >
                   Statistics
                 </button>
               </div>
-              
               <div className="p-6">
                 {activeTab === 'tracker' && (
-                  <SymptomTracker
-                    selectedDate={selectedDate}
-                    entry={getCurrentEntry()}
-                    onSave={handleSaveEntry}
+                  <SymptomTracker 
+                    selectedDate={selectedDate} 
+                    entry={getCurrentEntry()} 
+                    onSave={handleSaveEntry} 
                   />
                 )}
-                
                 {activeTab === 'insights' && (
-                  <div className="space-y-6">
-                    {!insights ? (
-                      <div className="text-center py-12">
-                        <h3 className="text-lg font-medium text-gray-700 mb-3">Get AI-Powered Fertility Insights</h3>
-                        <p className="text-gray-500 mb-6">Click the button below to generate personalized fertility analysis and recommendations.</p>
-                        <button
-                          onClick={generateInsights}
-                          disabled={isGeneratingInsights}
-                          className="inline-flex items-center px-6 py-3 border border-transparent text-base font-medium rounded-md shadow-sm text-white bg-primary hover:bg-primary/90 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary/50 disabled:opacity-50 disabled:cursor-not-allowed"
-                        >
-                          {isGeneratingInsights ? (
-                            <>
-                              <Loader2 className="animate-spin -ml-1 mr-3 h-5 w-5 text-white" />
-                              Generating...
-                            </>
-                          ) : (
-                            'Generate Insights Now'
-                          )}
-                        </button>
-                      </div>
-                    ) : (
-                      <>
-                        <div className="bg-blue-50 p-4 rounded-lg">
-                          <div className="flex justify-between items-start">
-                            <h3 className="font-semibold text-blue-800 mb-2">Fertility Analysis</h3>
-                            <div className="flex items-center gap-2">
-                              <button
-                                onClick={generateInsights}
-                                disabled={isGeneratingInsights}
-                                className="text-xs text-blue-600 hover:text-blue-800 disabled:opacity-50 flex items-center gap-1"
-                              >
-                                {isGeneratingInsights ? (
-                                  <>
-                                    <Loader2 className="animate-spin h-3 w-3" />
-                                    Generating...
-                                  </>
-                                ) : (
-                                  'Regenerate'
-                                )}
-                              </button>
-                              {lastGenerationTime > 0 && (
-                                <span className="text-xs text-gray-400">
-                                  {Math.max(0, Math.ceil((RATE_LIMIT_MS - (Date.now() - lastGenerationTime)) / 1000))}s cooldown
-                                </span>
-                              )}
-                            </div>
-                          </div>
-                          <p className="text-blue-700">{insights.analysis}</p>
-                        </div>
-                      </>
-                    )}
-                    
-                    {insights?.recommendations?.length > 0 && (
-                      <div>
-                        <h3 className="font-semibold text-gray-800 mb-3">Recommendations</h3>
-                        <ul className="space-y-2">
-                          {insights.recommendations.map((rec, i) => (
-                            <li key={i} className="flex items-start">
-                              <span className="text-green-500 mr-2">•</span>
-                              <span>{rec}</span>
-                            </li>
-                          ))}
-                        </ul>
-                      </div>
-                    )}
-                    
-                    {symptomAnalysis && (
-                      <div className="mt-6">
-                        <h3 className="font-semibold text-gray-800 mb-3">Symptom Patterns</h3>
-                        <div className="prose max-w-none" dangerouslySetInnerHTML={{ __html: symptomAnalysis }} />
-                      </div>
-                    )}
-                  </div>
+                  <AIInsights
+                    insights={insights}
+                    isGenerating={isGeneratingInsights}
+                    onGenerateInsights={generateInsights}
+                  />
                 )}
-                
                 {activeTab === 'stats' && (
-                  <div>
-                    <h3 className="font-semibold text-gray-800 mb-4">Cycle Statistics</h3>
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                      <StatCard
-                        title="Average Cycle Length"
-                        value={`${stats.cycleLength} days`}
-                        icon="🔄"
-                        trend="stable"
-                      />
-                      <StatCard
-                        title="Period Length"
-                        value={`${stats.periodLength} days`}
-                        icon="🩸"
-                        trend="stable"
-                      />
-                      <StatCard
-                        title="Next Fertile Window"
-                        value={`Day ${stats.fertileWindow.start}-${stats.fertileWindow.end}`}
-                        icon="📆"
-                        trend="up"
-                      />
-                      <StatCard
-                        title="Ovulation Day"
-                        value={`Day ${stats.ovulationDay}`}
-                        icon="🥚"
-                        trend="down"
-                      />
-                    </div>
-                    
-                    <div className="mt-6">
-                      <h4 className="text-sm font-medium text-gray-700 mb-3">Symptom Frequency (Last 3 Months)</h4>
-                      <div className="space-y-2">
-                        {Object.entries(
-                          entries.flatMap(e => e.symptoms || []).reduce((acc, symptom) => {
-                            acc[symptom] = (acc[symptom] || 0) + 1;
-                            return acc;
-                          }, {} as Record<string, number>)
-                        )
-                        .sort((a, b) => b[1] - a[1])
-                        .map(([symptom, count]) => (
-                          <div key={symptom} className="flex items-center">
-                            <span className="w-32 text-sm text-gray-600 capitalize">
-                              {symptom.replace(/_/g, ' ')}
-                            </span>
-                            <div className="flex-1 bg-gray-200 rounded-full h-4">
-                              <div 
-                                className="bg-primary h-full rounded-full" 
-                                style={{ width: `${(count / entries.length) * 100}%` }}
-                              />
-                            </div>
-                            <span className="ml-2 text-sm text-gray-600 w-8 text-right">
-                              {count}
-                            </span>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                  </div>
+                  <Statistics entries={entries} stats={stats} />
                 )}
               </div>
             </div>
@@ -424,23 +355,4 @@ export default function FertilityInsightsPage() {
   );
 }
 
-// Helper component for stats cards
-function StatCard({ title, value, icon, trend }: { title: string; value: string; icon: string; trend: 'up' | 'down' | 'stable' }) {
-  return (
-    <div className="bg-white p-4 rounded-lg border border-gray-100">
-      <div className="flex justify-between items-start">
-        <div>
-          <p className="text-sm font-medium text-gray-500">{title}</p>
-          <p className="text-2xl font-semibold mt-1">{value}</p>
-        </div>
-        <span className="text-2xl">{icon}</span>
-      </div>
-      {trend !== 'stable' && (
-        <div className={`mt-2 text-sm flex items-center ${trend === 'up' ? 'text-green-600' : 'text-red-600'}`}>
-          {trend === 'up' ? '↑' : '↓'}
-          <span className="ml-1">From last month</span>
-        </div>
-      )}
-    </div>
-  );
-}
+// StatCard component is now moved to Statistics.tsx
