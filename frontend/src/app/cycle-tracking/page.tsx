@@ -103,9 +103,16 @@ const calculateCycleStats = (entries: CycleEntry[]): CycleStatsType => {
 };
 
 // Components
+import dynamic from 'next/dynamic';
 import CycleCalendar from './components/CycleCalendar';
 import CycleForm from './components/CycleForm';
 import CycleStats from './components/CycleStats';
+
+// Dynamically import AIPredictionPanel with no SSR
+const AIPredictionPanel = dynamic(
+  () => import('./components/AIPredictionPanel'),
+  { ssr: false }
+);
 
 export default function CycleTrackingPage() {
   const { user } = useAuth();
@@ -216,24 +223,34 @@ export default function CycleTrackingPage() {
           </div>
         ) : (
           <>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
-              <div className="md:col-span-2">
-                <CycleCalendar 
+            {/* AI Prediction Panel */}
+            <div className="bg-gradient-to-r from-pink-50 to-pink-100 p-6 rounded-xl shadow-sm border border-pink-100 mb-8">
+              <div className="max-w-6xl mx-auto">
+                <AIPredictionPanel 
+                  stats={stats} 
                   entries={entries} 
-                  onSelectDate={(date) => {
-                    const entry = entries.find(e => e.startDate.startsWith(date));
-                    if (entry) {
-                      handleEditEntry(entry);
-                    } else {
-                      // Create a new entry for the selected date
-                      setEditingEntry(null);
-                      setShowForm(true);
-                    }
-                  }}
+                  onPredictionUpdate={(prediction) => {
+                    console.log('AI Prediction Updated:', prediction);
+                  }} 
                 />
               </div>
-              <div>
-                <CycleStats stats={stats} />
+            </div>
+
+            {/* Main Content Grid */}
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+              <div className="md:col-span-2">
+                <div className="bg-white p-6 rounded-lg shadow-md mb-6">
+                  <CycleCalendar 
+                    entries={entries} 
+                    onSelectEntry={handleEditEntry}
+                    stats={stats}
+                  />
+                </div>
+              </div>
+              <div className="space-y-6">
+                <div className="bg-white p-6 rounded-lg shadow-md">
+                  <CycleStats stats={stats} entries={entries} />
+                </div>
               </div>
             </div>
 
