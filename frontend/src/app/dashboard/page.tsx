@@ -22,7 +22,6 @@ import {
 import { 
   WelcomeHeader, 
   StatsCards, 
-  HealthOverview, 
   UpcomingEvents, 
   QuickActions 
 } from './components';
@@ -394,18 +393,8 @@ function DashboardPage(): JSX.Element | null {
           periodLength={cycleData.periodLength}
         />
 
-        {/* Main Content Area */}
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-6">
-          {/* Health Overview (Chart + Recent Symptoms) */}
-          <HealthOverview 
-            chartData={chartData}
-            chartOptions={chartOptions}
-            chartSize={chartSize}
-            recentLogs={recentLogs}
-            chartContainerRef={chartContainerRef}
-          />
-
-          {/* Right Sidebar */}
+        {/* Right Sidebar */}
+        <div className="grid grid-cols-1 lg:grid-cols-1 gap-6 mb-6">
           <div className="space-y-6">
             <UpcomingEvents events={upcomingEvents} />
             <QuickActions />
